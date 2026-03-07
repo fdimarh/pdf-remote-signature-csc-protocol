@@ -24,6 +24,10 @@ pub struct SignOptions {
     pub timestamp_url: Option<String>,
     /// Optional visible signature configuration
     pub visible_signature: Option<VisibleSignatureConfig>,
+    /// Include CRL revocation data in CMS signed attributes
+    pub include_crl: bool,
+    /// Include OCSP revocation data in CMS signed attributes
+    pub include_ocsp: bool,
 }
 
 impl Default for SignOptions {
@@ -33,6 +37,8 @@ impl Default for SignOptions {
             pades_level: "B-B".to_string(),
             timestamp_url: None,
             visible_signature: None,
+            include_crl: false,
+            include_ocsp: false,
         }
     }
 }
@@ -120,6 +126,8 @@ pub async fn sign_pdf(
             &sign_options.signature_format,
             &sign_options.pades_level,
             sign_options.timestamp_url.as_deref(),
+            sign_options.include_crl,
+            sign_options.include_ocsp,
         )
         .await?;
 

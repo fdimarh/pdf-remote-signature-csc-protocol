@@ -106,6 +106,14 @@ enum Commands {
         /// signature box near the bottom-left of the page.
         #[arg(long, default_value = "50,50,250,150")]
         sig_rect: String,
+
+        /// Include CRL revocation data in CMS signed attributes (PKCS7 LTV)
+        #[arg(long, default_value_t = false)]
+        include_crl: bool,
+
+        /// Include OCSP revocation data in CMS signed attributes (PKCS7 LTV)
+        #[arg(long, default_value_t = false)]
+        include_ocsp: bool,
     },
 
     /// Verify a signed PDF document (local validation using pdf_signing library)
@@ -223,6 +231,8 @@ async fn main() -> anyhow::Result<()> {
             image,
             sig_page,
             sig_rect,
+            include_crl,
+            include_ocsp,
         } => {
             log::info!("Starting remote PDF signing...");
             log::info!("  Format: {}, Level: {}", format, level);
@@ -250,6 +260,8 @@ async fn main() -> anyhow::Result<()> {
                 pades_level: level.to_uppercase(),
                 timestamp_url: tsa_url,
                 visible_signature: visible_config,
+                include_crl,
+                include_ocsp,
             };
 
             client::workflow::sign_pdf(
