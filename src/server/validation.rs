@@ -11,6 +11,7 @@
 //! - LTV / DSS dictionary analysis
 //! - Timestamp presence detection
 
+use actix_multipart::Multipart;
 use actix_web::{web, HttpResponse};
 use base64::Engine;
 use pdf_signing::signature_validator::SignatureValidator;
@@ -19,6 +20,7 @@ use crate::common::csc_types::{
     CscErrorResponse, SignatureValidationResult, ValidateCertInfo, ValidateRequest,
     ValidateResponse,
 };
+use crate::server::multipart::extract_multipart_fields;
 
 /// `POST /api/v1/validate`
 ///
@@ -38,6 +40,55 @@ pub async fn validate_handler(body: web::Json<ValidateRequest>) -> HttpResponse 
     };
 
     let password = body.password.as_ref().map(|p| p.as_bytes());
+    execute_validate(&pdf_bytes, password)
+}
+
+/// `POST /api/v1/validate/form`
+///
+/// Multipart form-data alternative for PDF signature validation.
+///
+/// Form fields:
+/// - `file` (required): PDF file upload
+/// - `password`: Optional password for encrypted PDFs
+///
+/// Example with curl:
+/// ```sh
+/// curl -X POST http://localhost:8080/api/v1/validate/form \
+///   -F "file=@signed.pdf"
+/// ```
+pub async fn validate_form_handler(payload: Multipart) -> HttpResponse {
+    let fields = match extract_multipart_fields(payload).await {
+        Ok(f) => f,
+        Err(e) => {
+            return HttpResponse::BadRequest().json(CscErrorResponse {
+                error: "invalid_request".into(),
+                error_description: format!("Failed to parse form data: {}", e),
+            });
+        }
+    };
+
+    let pdf_bytes = match fields.get("file") {
+        Some(f) if !f.bytes.is_empty() => &f.bytes,
+        _ => {
+            return HttpResponse::BadRequest().json(CscErrorResponse {
+                error: "invalid_request".into(),
+                error_description: "Missing required field 'file' (PDF file upload)".into(),
+            });
+        }
+    };
+
+    let password_str = fields
+        .get("password")
+        .and_then(|f| f.as_text())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string());
+    let password = password_str.as_ref().map(|p| p.as_bytes());
+
+    execute_validate(pdf_bytes, password)
+}
+
+/// Core validation logic shared by JSON and form-data handlers.
+fn execute_validate(pdf_bytes: &[u8], password: Option<&[u8]>) -> HttpResponse {
 
     log::info!(
         "Validating PDF: {} bytes, password={}",
@@ -139,6 +190,7 @@ pub async fn validate_handler(body: web::Json<ValidateRequest>) -> HttpResponse 
 
 /// Configure validation routes
 pub fn configure(cfg: &mut web::ServiceConfig) {
-    cfg.route("/api/v1/validate", web::post().to(validate_handler));
+    cfg.route("/api/v1/validate", web::post().to(validate_handler))
+        .route("/api/v1/validate/form", web::post().to(validate_form_handler));
 }
 
