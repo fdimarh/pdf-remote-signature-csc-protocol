@@ -16,6 +16,9 @@ The **server** acts as a PKI / Trust Service Provider (TSP) managing X.509 certi
 - **Comprehensive Validation** — 20+ cryptographic and structural checks (digest, chain, ByteRange, wrapping attacks, MDP, LTV)
 - **Multi-Level Certificate Chains** — Supports 2-level (self-signed) and 3-level (Nowina DSS) PKI chains
 - **TSA Timestamp Support** — Integrates with external Timestamp Authorities for B-T/B-LT/B-LTA levels
+- **Form-Data Upload** — All signing/validation endpoints support `multipart/form-data` with binary PDF response
+- **OpenAPI 3.0 Spec** — Machine-readable API spec at `docs/openapi.yaml`
+- **Postman Collection** — Ready-to-use collection at `docs/postman_collection.json`
 
 ---
 
@@ -357,6 +360,9 @@ remote-signature-pdf/
 ├── Cargo.toml
 ├── README.md
 ├── PLAN.md                           # Detailed architecture & API reference
+├── docs/
+│   ├── openapi.yaml                   # OpenAPI 3.0 specification
+│   └── postman_collection.json        # Postman collection (import-ready)
 ├── certs/
 │   ├── generate_certs.sh             # Generate legacy self-signed certs
 │   ├── ca-cert.pem, ca-key.pem       # Legacy CA
@@ -390,7 +396,9 @@ remote-signature-pdf/
 │   ├── gen_test_signature_image.rs    # Generate a test signature PNG
 │   └── test_all_variants.rs           # Test all format/level combinations
 └── test-files/
+    ├── test_comprehensive.sh          # Full test suite (35 tests, all scenarios)
     ├── test_endpoints.sh              # Test all CSC API endpoints
+    ├── test_form_data.sh              # Test form-data upload endpoints
     ├── test_visible_signature.sh      # Test visible signature signing
     ├── test_server_side_sign.sh       # Test server-side signPdf
     └── test_nowina_cert.sh            # Test Nowina cert chain
@@ -490,7 +498,16 @@ Options:
 | `image` | PNG/JPEG decoding for visible signatures |
 | `jsonwebtoken` | JWT Bearer token generation |
 | `base64` | Base64 encoding/decoding |
+| `actix-multipart` | Multipart form-data file uploads |
+| `futures-util` | Async stream processing for multipart |
 | `tempfile` | Temporary files for server-side PDF loading |
+
+---
+
+## API Documentation
+
+- **OpenAPI 3.0 Spec**: [`docs/openapi.yaml`](docs/openapi.yaml) — Import into Swagger UI, Redoc, or any OpenAPI tool
+- **Postman Collection**: [`docs/postman_collection.json`](docs/postman_collection.json) — Import into Postman for interactive testing
 
 ---
 
