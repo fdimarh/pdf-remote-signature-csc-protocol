@@ -1,0 +1,973 @@
+openapi: "3.0.3"
+info:
+  title: Remote Signature PDF — CSC v2 API
+  description: |
+    A remote PDF digital signing service based on the **Cloud Signature Consortium (CSC) API v2** protocol.
+
+    The server acts as a PKI / Trust Service Provider (TSP), managing X.509 certificates and
+    performing CMS/PKCS#7 cryptographic signing operations.
+
+    ## Signing Modes
+
+    | Mode | Endpoint | Description |
+    |------|----------|-------------|
+    | **signHash** | `POST /csc/v2/signatures/signHash` | Client sends hash, server builds CMS |
+    | **signDoc** | `POST /csc/v2/signatures/signDoc` | Client sends byte-range content, server builds CMS |
+    | **signPdf** | `POST /api/v1/signPdf` | Client uploads PDF, server does everything |
+
+    ## Authentication
+
+    All endpoints except `/csc/v2/info` and `/api/v1/validate` require a Bearer token
+    obtained from `POST /csc/v2/auth/login` with Basic Auth credentials.
+
+    **Test credentials**: `testuser` / `testpass`
+
+    ## Formats
+
+    - **PKCS#7** (`adbe.pkcs7.detached`)
+    - **PAdES** (`ETSI.CAdES.detached`) with levels: B-B, B-T, B-LT, B-LTA
+  version: "1.0.0"
+  contact:
+    name: Remote Signature PDF
+  license:
+    name: Prototype / Educational
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+tags:
+  - name: info
+    description: Service metadata
+  - name: auth
+    description: Authentication
+  - name: credentials
+    description: Signing credentials
+  - name: signing
+    description: Signature creation (signHash, signDoc)
+  - name: signPdf
+    description: Full server-side PDF signing
+  - name: validation
+    description: Signature validation
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /csc/v2/auth/login
+    BasicAuth:
+      type: http
+      scheme: basic
+      description: Username and password for login
+
+  schemas:
+    # ─── Error ───
+    CscError:
+      type: object
+      required: [error, error_description]
+      properties:
+        error:
+          type: string
+          example: invalid_request
+        error_description:
+          type: string
+          example: "Invalid Base64 in pdfContent"
+
+    # ─── Info ───
+    InfoResponse:
+      type: object
+      properties:
+        specs:
+          type: string
+          example: "2.0.0.0"
+        name:
+          type: string
+          example: "Remote Signature PDF Prototype"
+        logo:
+          type: string
+        region:
+          type: string
+          example: "ID"
+        lang:
+          type: string
+          example: "en"
+        description:
+          type: string
+        authType:
+          type: array
+          items:
+            type: string
+          example: ["basic"]
+        methods:
+          type: array
+          items:
+            type: string
+          example:
+            - auth/login
+            - credentials/list
+            - credentials/info
+            - signatures/signHash
+            - signatures/signDoc
+            - signatures/signDoc/form
+            - signPdf
+            - signPdf/form
+            - validate
+            - validate/form
+        signatureFormats:
+          type: array
+          items:
+            type: string
+          example: ["pkcs7", "pades"]
+        padesLevels:
+          type: array
+          items:
+            type: string
+          example: ["B-B", "B-T", "B-LT", "B-LTA"]
+
+    # ─── Auth ───
+    AuthLoginRequest:
+      type: object
+      properties:
+        rememberMe:
+          type: boolean
+          default: true
+
+    AuthLoginResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          example: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+        token_type:
+          type: string
+          example: "Bearer"
+        expires_in:
+          type: integer
+          example: 3600
+
+    # ─── Credentials ───
+    CredentialsListRequest:
+      type: object
+      properties:
+        maxResults:
+          type: integer
+          nullable: true
+
+    CredentialsListResponse:
+      type: object
+      properties:
+        credentialIDs:
+          type: array
+          items:
+            type: string
+          example: ["credential-001"]
+
+    CredentialsInfoRequest:
+      type: object
+      required: [credentialID]
+      properties:
+        credentialID:
+          type: string
+          example: "credential-001"
+        certificates:
+          type: string
+          default: "single"
+          enum: ["single", "chain"]
+
+    KeyInfo:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "enabled"
+        algo:
+          type: array
+          items:
+            type: string
+          example: ["1.2.840.113549.1.1.11"]
+        len:
+          type: integer
+          example: 3072
+
+    CertInfo:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "valid"
+        certificates:
+          type: array
+          items:
+            type: string
+            description: Base64-encoded DER certificate
+        issuerDN:
+          type: string
+          example: "CN=good-ca, OU=PKI-TEST, O=Nowina Solutions, C=LU"
+        serialNumber:
+          type: string
+        subjectDN:
+          type: string
+          example: "CN=good-user-crl-ocsp, OU=PKI-TEST, O=Nowina Solutions, C=LU"
+        validFrom:
+          type: string
+        validTo:
+          type: string
+
+    CredentialsInfoResponse:
+      type: object
+      properties:
+        key:
+          $ref: "#/components/schemas/KeyInfo"
+        cert:
+          $ref: "#/components/schemas/CertInfo"
+        authMode:
+          type: string
+          example: "implicit"
+
+    # ─── SignHash ───
+    SignHashRequest:
+      type: object
+      required: [credentialID, hashes, hashAlgo, signAlgo]
+      properties:
+        credentialID:
+          type: string
+          example: "credential-001"
+        SAD:
+          type: string
+          nullable: true
+        hashes:
+          type: array
+          items:
+            type: string
+            description: Base64-encoded SHA-256 hash (32 bytes)
+        hashAlgo:
+          type: string
+          example: "2.16.840.1.101.3.4.2.1"
+          description: SHA-256 OID
+        signAlgo:
+          type: string
+          example: "1.2.840.113549.1.1.11"
+          description: RSA-SHA256 OID
+
+    SignHashResponse:
+      type: object
+      properties:
+        signatures:
+          type: array
+          items:
+            type: string
+            description: Base64-encoded CMS/PKCS#7 SignedData
+
+    # ─── SignDoc ───
+    SignDocRequest:
+      type: object
+      required: [credentialID, documentContent, hashAlgo, signAlgo]
+      properties:
+        credentialID:
+          type: string
+          example: "credential-001"
+        documentContent:
+          type: string
+          description: Base64-encoded byte-range content
+        hashAlgo:
+          type: string
+          example: "2.16.840.1.101.3.4.2.1"
+        signAlgo:
+          type: string
+          example: "1.2.840.113549.1.1.11"
+        signatureFormat:
+          type: string
+          default: "pades"
+          enum: ["pkcs7", "pades"]
+        padesLevel:
+          type: string
+          default: "B-B"
+          enum: ["B-B", "B-T", "B-LT", "B-LTA"]
+        timestampUrl:
+          type: string
+          nullable: true
+          description: TSA URL for B-T/B-LT/B-LTA
+        includeCrl:
+          type: boolean
+          default: false
+        includeOcsp:
+          type: boolean
+          default: false
+
+    SignDocResponse:
+      type: object
+      properties:
+        signature:
+          type: string
+          description: Base64-encoded CMS/PKCS#7 SignedData
+        signatureFormat:
+          type: string
+          example: "pades"
+        padesLevel:
+          type: string
+          nullable: true
+          example: "B-B"
+
+    # ─── SignPdf ───
+    SignPdfRequest:
+      type: object
+      required: [credentialID, pdfContent]
+      properties:
+        credentialID:
+          type: string
+          example: "credential-001"
+        pdfContent:
+          type: string
+          description: Base64-encoded PDF file
+        imageContent:
+          type: string
+          nullable: true
+          description: Base64-encoded PNG/JPEG for visible signature
+        sigRect:
+          type: array
+          items:
+            type: number
+          minItems: 4
+          maxItems: 4
+          nullable: true
+          description: "[x1, y1, x2, y2] in PDF points"
+          example: [50, 50, 250, 150]
+        sigPage:
+          type: integer
+          default: 1
+          description: Page number (1-based)
+        signerName:
+          type: string
+          default: "Digital Signature"
+        signatureFormat:
+          type: string
+          default: "pades"
+          enum: ["pkcs7", "pades"]
+        padesLevel:
+          type: string
+          default: "B-B"
+          enum: ["B-B", "B-T", "B-LT", "B-LTA"]
+        timestampUrl:
+          type: string
+          nullable: true
+        includeCrl:
+          type: boolean
+          default: false
+        includeOcsp:
+          type: boolean
+          default: false
+
+    SignPdfResponse:
+      type: object
+      properties:
+        signedPdf:
+          type: string
+          description: Base64-encoded signed PDF
+        signatureFormat:
+          type: string
+          example: "pades"
+        padesLevel:
+          type: string
+          nullable: true
+          example: "B-B"
+        hasVisibleSignature:
+          type: boolean
+
+    # ─── Validate ───
+    ValidateRequest:
+      type: object
+      required: [pdfContent]
+      properties:
+        pdfContent:
+          type: string
+          description: Base64-encoded signed PDF
+        password:
+          type: string
+          nullable: true
+
+    ValidateCertInfo:
+      type: object
+      properties:
+        subject:
+          type: string
+        issuer:
+          type: string
+        serialNumber:
+          type: string
+        notBefore:
+          type: string
+          nullable: true
+        notAfter:
+          type: string
+          nullable: true
+        isExpired:
+          type: boolean
+        isSelfSigned:
+          type: boolean
+
+    SignatureValidationResult:
+      type: object
+      properties:
+        fieldName:
+          type: string
+          nullable: true
+        signerName:
+          type: string
+          nullable: true
+        contactInfo:
+          type: string
+          nullable: true
+        reason:
+          type: string
+          nullable: true
+        signingTime:
+          type: string
+          nullable: true
+        filter:
+          type: string
+          nullable: true
+        subFilter:
+          type: string
+          nullable: true
+        isValid:
+          type: boolean
+        digestMatch:
+          type: boolean
+        cmsSignatureValid:
+          type: boolean
+        certificateChainValid:
+          type: boolean
+        certificateChainTrusted:
+          type: boolean
+        byteRange:
+          type: array
+          items:
+            type: integer
+        byteRangeValid:
+          type: boolean
+        byteRangeCoversWholeFile:
+          type: boolean
+        hasDss:
+          type: boolean
+        dssCrlCount:
+          type: integer
+        dssOcspCount:
+          type: integer
+        dssCertCount:
+          type: integer
+        hasVri:
+          type: boolean
+        hasCmsRevocationData:
+          type: boolean
+        hasTimestamp:
+          type: boolean
+        isLtvEnabled:
+          type: boolean
+        noUnauthorizedModifications:
+          type: boolean
+        modificationNotes:
+          type: array
+          items:
+            type: string
+        signatureNotWrapped:
+          type: boolean
+        certificationLevel:
+          type: integer
+          nullable: true
+        certificationPermissionOk:
+          type: boolean
+        securityWarnings:
+          type: array
+          items:
+            type: string
+        chainWarnings:
+          type: array
+          items:
+            type: string
+        certificates:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValidateCertInfo"
+        errors:
+          type: array
+          items:
+            type: string
+        isEncrypted:
+          type: boolean
+        isDocumentTimestamp:
+          type: boolean
+
+    ValidateResponse:
+      type: object
+      properties:
+        signatureCount:
+          type: integer
+        allValid:
+          type: boolean
+        signatures:
+          type: array
+          items:
+            $ref: "#/components/schemas/SignatureValidationResult"
+
+paths:
+  # ═══════════════════ CSC v2 Endpoints ═══════════════════
+
+  /csc/v2/info:
+    post:
+      tags: [info]
+      summary: Service metadata
+      description: Returns service name, supported formats, levels, and methods. No authentication required.
+      operationId: getInfo
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Service information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InfoResponse"
+
+  /csc/v2/auth/login:
+    post:
+      tags: [auth]
+      summary: Authenticate and get Bearer token
+      description: |
+        Accepts Basic Auth credentials and returns a JWT Bearer token.
+
+        **Test credentials**: `testuser` / `testpass`
+      operationId: login
+      security:
+        - BasicAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthLoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthLoginResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CscError"
+
+  /csc/v2/credentials/list:
+    post:
+      tags: [credentials]
+      summary: List signing credentials
+      operationId: listCredentials
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CredentialsListRequest"
+      responses:
+        "200":
+          description: Credential IDs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialsListResponse"
+        "401":
+          description: Missing or invalid Bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CscError"
+
+  /csc/v2/credentials/info:
+    post:
+      tags: [credentials]
+      summary: Get certificate chain and key info
+      operationId: getCredentialInfo
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CredentialsInfoRequest"
+      responses:
+        "200":
+          description: Credential info with certificate chain
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialsInfoResponse"
+        "401":
+          description: Missing or invalid Bearer token
+        "403":
+          description: No access to the requested credential
+
+  /csc/v2/signatures/signHash:
+    post:
+      tags: [signing]
+      summary: Sign a SHA-256 hash (standard CSC)
+      description: |
+        Receives Base64-encoded SHA-256 hash(es) and returns CMS SignedData blob(s).
+
+        **Note**: This is a simplified implementation where the server wraps the hash as external content.
+        For correct PDF signatures, use `/csc/v2/signatures/signDoc` instead.
+      operationId: signHash
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignHashRequest"
+      responses:
+        "200":
+          description: CMS signatures
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignHashResponse"
+        "400":
+          description: Invalid request (wrong hash length, unsupported algorithm)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CscError"
+        "401":
+          description: Missing or invalid Bearer token
+        "403":
+          description: No access to credential
+
+  /csc/v2/signatures/signDoc:
+    post:
+      tags: [signing]
+      summary: Sign byte-range content (recommended)
+      description: |
+        Receives Base64-encoded raw document content bytes (byte ranges concatenated).
+        The server computes the hash internally and builds a proper CMS SignedData with correct `messageDigest`.
+
+        **This is the recommended endpoint** for producing valid PDF digital signatures.
+      operationId: signDoc
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignDocRequest"
+      responses:
+        "200":
+          description: CMS signature
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignDocResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CscError"
+        "401":
+          description: Missing or invalid Bearer token
+        "403":
+          description: No access to credential
+
+  /csc/v2/signatures/signDoc/form:
+    post:
+      tags: [signing]
+      summary: Sign byte-range content via file upload
+      description: |
+        Multipart form-data alternative for `signDoc`. Upload a binary file containing the byte-range content instead of Base64-encoding it.
+      operationId: signDocForm
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Byte-range content file
+                credentialID:
+                  type: string
+                  default: "credential-001"
+                signatureFormat:
+                  type: string
+                  default: "pades"
+                  enum: ["pkcs7", "pades"]
+                padesLevel:
+                  type: string
+                  default: "B-B"
+                  enum: ["B-B", "B-T", "B-LT", "B-LTA"]
+                timestampUrl:
+                  type: string
+                includeCrl:
+                  type: string
+                  enum: ["true", "false"]
+                  default: "false"
+                includeOcsp:
+                  type: string
+                  enum: ["true", "false"]
+                  default: "false"
+                responseFormat:
+                  type: string
+                  enum: ["json", "binary"]
+                  default: "json"
+                  description: "'json' returns JSON with Base64 CMS; 'binary' returns raw CMS DER"
+      responses:
+        "200":
+          description: CMS signature (JSON or binary depending on responseFormat)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignDocResponse"
+            application/pkcs7-signature:
+              schema:
+                type: string
+                format: binary
+
+  # ═══════════════════ Custom API Endpoints ═══════════════════
+
+  /api/v1/signPdf:
+    post:
+      tags: [signPdf]
+      summary: Full server-side PDF signing (JSON)
+      description: |
+        Upload a complete PDF + optional signature image (both Base64-encoded).
+        The server handles the entire signing pipeline:
+        1. PDF preparation (placeholder insertion)
+        2. Visible image rendering (if provided)
+        3. Hash computation
+        4. CMS SignedData construction
+        5. Signature embedding
+
+        Returns the fully signed PDF as a Base64-encoded string.
+      operationId: signPdf
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignPdfRequest"
+      responses:
+        "200":
+          description: Signed PDF
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignPdfResponse"
+        "400":
+          description: Invalid request (bad Base64, missing sigRect with image, corrupt PDF)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CscError"
+        "401":
+          description: Missing or invalid Bearer token
+        "403":
+          description: No access to credential
+        "500":
+          description: Server signing error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CscError"
+
+  /api/v1/signPdf/form:
+    post:
+      tags: [signPdf]
+      summary: Full server-side PDF signing (form-data file upload)
+      description: |
+        Multipart form-data alternative. Upload PDF and image files directly — no Base64 encoding needed.
+
+        **Response format**: By default returns raw PDF bytes (`application/pdf`).
+        Set `responseFormat=json` to get the JSON response instead.
+
+        ```bash
+        curl -X POST http://localhost:8080/api/v1/signPdf/form \
+          -H "Authorization: Bearer $TOKEN" \
+          -F "file=@document.pdf" \
+          -F "image=@signature.png" \
+          -F "sigRect=50,50,250,150" \
+          -F "signerName=John Doe" \
+          -o signed.pdf
+        ```
+      operationId: signPdfForm
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: PDF file to sign
+                image:
+                  type: string
+                  format: binary
+                  description: PNG/JPEG signature image (optional)
+                credentialID:
+                  type: string
+                  default: "credential-001"
+                signerName:
+                  type: string
+                  default: "Digital Signature"
+                signatureFormat:
+                  type: string
+                  default: "pades"
+                  enum: ["pkcs7", "pades"]
+                padesLevel:
+                  type: string
+                  default: "B-B"
+                  enum: ["B-B", "B-T", "B-LT", "B-LTA"]
+                sigRect:
+                  type: string
+                  description: "x1,y1,x2,y2 in PDF points"
+                  example: "50,50,250,150"
+                sigPage:
+                  type: string
+                  default: "1"
+                timestampUrl:
+                  type: string
+                includeCrl:
+                  type: string
+                  enum: ["true", "false"]
+                  default: "false"
+                includeOcsp:
+                  type: string
+                  enum: ["true", "false"]
+                  default: "false"
+                responseFormat:
+                  type: string
+                  enum: ["binary", "json"]
+                  default: "binary"
+                  description: "'binary' returns raw PDF; 'json' returns Base64-encoded JSON"
+      responses:
+        "200":
+          description: Signed PDF (binary or JSON depending on responseFormat)
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+                description: Raw signed PDF bytes (default)
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignPdfResponse"
+          headers:
+            Content-Disposition:
+              description: 'attachment; filename="signed.pdf"'
+              schema:
+                type: string
+            X-Signature-Format:
+              description: Signature format used (e.g. "pades")
+              schema:
+                type: string
+            X-Has-Visible-Signature:
+              description: Whether visible signature was applied
+              schema:
+                type: string
+                enum: ["true", "false"]
+        "400":
+          description: Missing file or invalid parameters
+        "401":
+          description: Missing or invalid Bearer token
+        "403":
+          description: No access to credential
+
+  /api/v1/validate:
+    post:
+      tags: [validation]
+      summary: Validate a signed PDF (JSON)
+      description: |
+        Accepts a Base64-encoded signed PDF and performs comprehensive validation on
+        every digital signature found in the document.
+
+        Checks include: digest integrity, CMS signature, certificate chain, ByteRange,
+        signature wrapping detection (SWA), modification detection, MDP permissions,
+        LTV/DSS status, and timestamp presence.
+      operationId: validatePdf
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidateRequest"
+      responses:
+        "200":
+          description: Validation results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidateResponse"
+        "400":
+          description: Invalid request (bad Base64, corrupt PDF)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CscError"
+
+  /api/v1/validate/form:
+    post:
+      tags: [validation]
+      summary: Validate a signed PDF (form-data file upload)
+      description: |
+        Multipart form-data alternative. Upload the PDF file directly.
+
+        ```bash
+        curl -X POST http://localhost:8080/api/v1/validate/form \
+          -F "file=@signed.pdf"
+        ```
+      operationId: validatePdfForm
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Signed PDF file to validate
+                password:
+                  type: string
+                  description: Password for encrypted PDFs
+      responses:
+        "200":
+          description: Validation results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidateResponse"
+        "400":
+          description: Missing file or corrupt PDF
+
