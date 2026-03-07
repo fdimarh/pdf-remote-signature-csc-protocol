@@ -12,7 +12,7 @@ pub async fn info_handler() -> HttpResponse {
         logo: String::new(),
         region: "ID".to_string(),
         lang: "en".to_string(),
-        description: "CSC v2 prototype signing service with static PKI backend. Supports PKCS7 and PAdES (B-B, B-T, B-LT, B-LTA) signature formats, PDF validation, and visible/invisible signatures.".to_string(),
+        description: "CSC v2 prototype signing service with static PKI backend. Supports PKCS7 and PAdES (B-B, B-T, B-LT, B-LTA) signature formats, PDF validation, visible/invisible signatures, and multipart/form-data uploads.".to_string(),
         auth_type: vec!["basic".to_string()],
         methods: vec![
             "auth/login".to_string(),
@@ -20,8 +20,11 @@ pub async fn info_handler() -> HttpResponse {
             "credentials/info".to_string(),
             "signatures/signHash".to_string(),
             "signatures/signDoc".to_string(),
+            "signatures/signDoc/form".to_string(),
             "signPdf".to_string(),
+            "signPdf/form".to_string(),
             "validate".to_string(),
+            "validate/form".to_string(),
         ],
         signature_formats: vec!["pkcs7".to_string(), "pades".to_string()],
         pades_levels: vec![
