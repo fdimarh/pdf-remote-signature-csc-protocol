@@ -14,6 +14,8 @@ test-files/form-variants/
 test-files/ltv-fix/
 !test-files/sample.pdf
 !test-files/signature-image.png
+!test-files/test_all_signing.sh
+!test-files/all-signing-test-report.txt
 
 # IDE
 .idea/

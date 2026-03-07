@@ -1,0 +1,414 @@
+╔═══════════════════════════════════════════════════════════════╗
+║  Comprehensive Signing & Validation Retest                    ║
+║  2026-03-07 19:35:38                                          ║
+╚═══════════════════════════════════════════════════════════════╝
+
+Server PID=43135, Port=9100
+Output:  /tmp/signing-retest-1772886938
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION A: Client-Side Signing (CLI → CSC signDoc → local embed)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+--- A-cli-pades-B-B-invisible ---
+  ✅ A-cli-pades-B-B-invisible (51341 bytes)
+
+--- A-cli-pades-B-T-invisible ---
+  ✅ A-cli-pades-B-T-invisible (51341 bytes)
+
+--- A-cli-pades-B-LT-invisible ---
+  ✅ A-cli-pades-B-LT-invisible (51340 bytes)
+
+--- A-cli-pades-B-LTA-invisible ---
+  ✅ A-cli-pades-B-LTA-invisible (51341 bytes)
+
+--- A-cli-pades-BT-visible ---
+  ✅ A-cli-pades-BT-visible (52231 bytes)
+
+--- A-cli-pkcs7-invisible ---
+  ✅ A-cli-pkcs7-invisible (51341 bytes)
+
+--- A-cli-pkcs7-visible ---
+  ✅ A-cli-pkcs7-visible (52231 bytes)
+
+--- A-cli-pkcs7-crl-only ---
+  ✅ A-cli-pkcs7-crl-only (51341 bytes)
+
+--- A-cli-pkcs7-ocsp-only ---
+  ✅ A-cli-pkcs7-ocsp-only (51341 bytes)
+
+--- A-cli-pkcs7-crl-ocsp ---
+  ✅ A-cli-pkcs7-crl-ocsp (51340 bytes)
+
+--- A-cli-pkcs7-crl-ocsp-tsa ---
+  ✅ A-cli-pkcs7-crl-ocsp-tsa (51341 bytes)
+
+--- A-cli-pkcs7-ltv-full-visible ---
+  ✅ A-cli-pkcs7-ltv-full-visible (52231 bytes)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION B: Server-Side Signing (POST /api/v1/signPdf/form)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+--- B-server-pades-B-B-invisible ---
+  HTTP=200, Size=51298
+  ✅ B-server-pades-B-B-invisible (51298 bytes)
+
+--- B-server-pades-B-T-invisible ---
+  HTTP=200, Size=51297
+  ✅ B-server-pades-B-T-invisible (51297 bytes)
+
+--- B-server-pades-B-LT-invisible ---
+  HTTP=200, Size=61168
+  ✅ B-server-pades-B-LT-invisible (61168 bytes)
+
+--- B-server-pades-B-LTA-invisible ---
+  HTTP=200, Size=91846
+  ✅ B-server-pades-B-LTA-invisible (91846 bytes)
+
+--- B-server-pades-B-B-visible ---
+  HTTP=200, Size=52182
+  ✅ B-server-pades-B-B-visible (52182 bytes)
+
+--- B-server-pades-B-T-visible ---
+  HTTP=200, Size=52182
+  ✅ B-server-pades-B-T-visible (52182 bytes)
+
+--- B-server-pades-B-LT-visible ---
+  HTTP=200, Size=62052
+  ✅ B-server-pades-B-LT-visible (62052 bytes)
+
+--- B-server-pades-B-LTA-visible ---
+  HTTP=200, Size=92735
+  ✅ B-server-pades-B-LTA-visible (92735 bytes)
+
+--- B-server-pkcs7-invisible ---
+  HTTP=200, Size=51298
+  ✅ B-server-pkcs7-invisible (51298 bytes)
+
+--- B-server-pkcs7-visible ---
+  HTTP=200, Size=52182
+  ✅ B-server-pkcs7-visible (52182 bytes)
+
+--- B-server-pkcs7-invisible-tsa ---
+  HTTP=200, Size=51298
+  ✅ B-server-pkcs7-invisible-tsa (51298 bytes)
+
+--- B-server-pkcs7-visible-tsa ---
+  HTTP=200, Size=52183
+  ✅ B-server-pkcs7-visible-tsa (52183 bytes)
+
+--- B-server-pkcs7-crl-only ---
+  HTTP=200, Size=51298
+  ✅ B-server-pkcs7-crl-only (51298 bytes)
+
+--- B-server-pkcs7-ocsp-only ---
+  HTTP=200, Size=51298
+  ✅ B-server-pkcs7-ocsp-only (51298 bytes)
+
+--- B-server-pkcs7-crl-ocsp ---
+  HTTP=200, Size=51298
+  ✅ B-server-pkcs7-crl-ocsp (51298 bytes)
+
+--- B-server-pkcs7-crl-ocsp-tsa ---
+  HTTP=200, Size=51298
+  ✅ B-server-pkcs7-crl-ocsp-tsa (51298 bytes)
+
+--- B-server-pkcs7-ltv-full-visible ---
+  HTTP=200, Size=52181
+  ✅ B-server-pkcs7-ltv-full-visible (52181 bytes)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION C: CSC signDoc/form (raw CMS)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+--- C-signdoc-pades-B-B ---
+  HTTP=200
+  ✅ C-signdoc-pades-B-B
+
+--- C-signdoc-pades-B-T-tsa ---
+  HTTP=200
+  ✅ C-signdoc-pades-B-T-tsa
+
+--- C-signdoc-pkcs7 ---
+  HTTP=200
+  ✅ C-signdoc-pkcs7
+
+--- C-signdoc-pkcs7-tsa ---
+  HTTP=200
+  ✅ C-signdoc-pkcs7-tsa
+
+--- C-signdoc-pkcs7-crl-only ---
+  HTTP=200
+  ✅ C-signdoc-pkcs7-crl-only
+
+--- C-signdoc-pkcs7-ocsp-only ---
+  HTTP=200
+  ✅ C-signdoc-pkcs7-ocsp-only
+
+--- C-signdoc-pkcs7-crl-ocsp ---
+  HTTP=200
+  ✅ C-signdoc-pkcs7-crl-ocsp
+
+--- C-signdoc-pkcs7-crl-ocsp-tsa ---
+  HTTP=200
+  ✅ C-signdoc-pkcs7-crl-ocsp-tsa
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION D: Server-Side Validation (POST /api/v1/validate/form)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+--- validate: A-cli-pades-B-B-invisible.pdf ---
+  valid=True  sigs=1  ts=False  dss=False  ltv=False
+  ✅ validate A-cli-pades-B-B-invisible.pdf (sigs=1 ts=False dss=False ltv=False)
+
+--- validate: A-cli-pades-B-LT-invisible.pdf ---
+  valid=True  sigs=1  ts=True  dss=False  ltv=True
+  ✅ validate A-cli-pades-B-LT-invisible.pdf (sigs=1 ts=True dss=False ltv=True)
+
+--- validate: A-cli-pades-B-LTA-invisible.pdf ---
+  valid=True  sigs=1  ts=True  dss=False  ltv=True
+  ✅ validate A-cli-pades-B-LTA-invisible.pdf (sigs=1 ts=True dss=False ltv=True)
+
+--- validate: A-cli-pades-B-T-invisible.pdf ---
+  valid=True  sigs=1  ts=True  dss=False  ltv=False
+  ✅ validate A-cli-pades-B-T-invisible.pdf (sigs=1 ts=True dss=False ltv=False)
+
+--- validate: A-cli-pades-BT-visible.pdf ---
+  valid=True  sigs=1  ts=True  dss=False  ltv=False
+  ✅ validate A-cli-pades-BT-visible.pdf (sigs=1 ts=True dss=False ltv=False)
+
+--- validate: A-cli-pkcs7-crl-ocsp-tsa.pdf ---
+  valid=True  sigs=1  ts=True  dss=False  ltv=True
+  ✅ validate A-cli-pkcs7-crl-ocsp-tsa.pdf (sigs=1 ts=True dss=False ltv=True)
+
+--- validate: A-cli-pkcs7-crl-ocsp.pdf ---
+  valid=True  sigs=1  ts=False  dss=False  ltv=False
+  ✅ validate A-cli-pkcs7-crl-ocsp.pdf (sigs=1 ts=False dss=False ltv=False)
+
+--- validate: A-cli-pkcs7-crl-only.pdf ---
+  valid=True  sigs=1  ts=False  dss=False  ltv=False
+  ✅ validate A-cli-pkcs7-crl-only.pdf (sigs=1 ts=False dss=False ltv=False)
+
+--- validate: A-cli-pkcs7-invisible.pdf ---
+  valid=True  sigs=1  ts=False  dss=False  ltv=False
+  ✅ validate A-cli-pkcs7-invisible.pdf (sigs=1 ts=False dss=False ltv=False)
+
+--- validate: A-cli-pkcs7-ltv-full-visible.pdf ---
+  valid=True  sigs=1  ts=True  dss=False  ltv=True
+  ✅ validate A-cli-pkcs7-ltv-full-visible.pdf (sigs=1 ts=True dss=False ltv=True)
+
+--- validate: A-cli-pkcs7-ocsp-only.pdf ---
+  valid=True  sigs=1  ts=False  dss=False  ltv=False
+  ✅ validate A-cli-pkcs7-ocsp-only.pdf (sigs=1 ts=False dss=False ltv=False)
+
+--- validate: A-cli-pkcs7-visible.pdf ---
+  valid=True  sigs=1  ts=False  dss=False  ltv=False
+  ✅ validate A-cli-pkcs7-visible.pdf (sigs=1 ts=False dss=False ltv=False)
+
+--- validate: B-server-pades-B-B-invisible.pdf ---
+  valid=True  sigs=1  ts=False  dss=False  ltv=False
+  ✅ validate B-server-pades-B-B-invisible.pdf (sigs=1 ts=False dss=False ltv=False)
+
+--- validate: B-server-pades-B-B-visible.pdf ---
+  valid=True  sigs=1  ts=False  dss=False  ltv=False
+  ✅ validate B-server-pades-B-B-visible.pdf (sigs=1 ts=False dss=False ltv=False)
+
+--- validate: B-server-pades-B-LT-invisible.pdf ---
+  valid=True  sigs=1  ts=True  dss=True  ltv=True
+  ✅ validate B-server-pades-B-LT-invisible.pdf (sigs=1 ts=True dss=True ltv=True)
+
+--- validate: B-server-pades-B-LT-visible.pdf ---
+  valid=True  sigs=1  ts=True  dss=True  ltv=True
+  ✅ validate B-server-pades-B-LT-visible.pdf (sigs=1 ts=True dss=True ltv=True)
+
+--- validate: B-server-pades-B-LTA-invisible.pdf ---
+  valid=True  sigs=2  ts=True  dss=True  ltv=True
+  ✅ validate B-server-pades-B-LTA-invisible.pdf (sigs=2 ts=True dss=True ltv=True)
+
+--- validate: B-server-pades-B-LTA-visible.pdf ---
+  valid=True  sigs=2  ts=True  dss=True  ltv=True
+  ✅ validate B-server-pades-B-LTA-visible.pdf (sigs=2 ts=True dss=True ltv=True)
+
+--- validate: B-server-pades-B-T-invisible.pdf ---
+  valid=True  sigs=1  ts=True  dss=False  ltv=False
+  ✅ validate B-server-pades-B-T-invisible.pdf (sigs=1 ts=True dss=False ltv=False)
+
+--- validate: B-server-pades-B-T-visible.pdf ---
+  valid=True  sigs=1  ts=True  dss=False  ltv=False
+  ✅ validate B-server-pades-B-T-visible.pdf (sigs=1 ts=True dss=False ltv=False)
+
+--- validate: B-server-pkcs7-crl-ocsp-tsa.pdf ---
+  valid=True  sigs=1  ts=True  dss=False  ltv=True
+  ✅ validate B-server-pkcs7-crl-ocsp-tsa.pdf (sigs=1 ts=True dss=False ltv=True)
+
+--- validate: B-server-pkcs7-crl-ocsp.pdf ---
+  valid=True  sigs=1  ts=False  dss=False  ltv=False
+  ✅ validate B-server-pkcs7-crl-ocsp.pdf (sigs=1 ts=False dss=False ltv=False)
+
+--- validate: B-server-pkcs7-crl-only.pdf ---
+  valid=True  sigs=1  ts=False  dss=False  ltv=False
+  ✅ validate B-server-pkcs7-crl-only.pdf (sigs=1 ts=False dss=False ltv=False)
+
+--- validate: B-server-pkcs7-invisible-tsa.pdf ---
+  valid=True  sigs=1  ts=True  dss=False  ltv=False
+  ✅ validate B-server-pkcs7-invisible-tsa.pdf (sigs=1 ts=True dss=False ltv=False)
+
+--- validate: B-server-pkcs7-invisible.pdf ---
+  valid=True  sigs=1  ts=False  dss=False  ltv=False
+  ✅ validate B-server-pkcs7-invisible.pdf (sigs=1 ts=False dss=False ltv=False)
+
+--- validate: B-server-pkcs7-ltv-full-visible.pdf ---
+  valid=True  sigs=1  ts=True  dss=False  ltv=True
+  ✅ validate B-server-pkcs7-ltv-full-visible.pdf (sigs=1 ts=True dss=False ltv=True)
+
+--- validate: B-server-pkcs7-ocsp-only.pdf ---
+  valid=True  sigs=1  ts=False  dss=False  ltv=False
+  ✅ validate B-server-pkcs7-ocsp-only.pdf (sigs=1 ts=False dss=False ltv=False)
+
+--- validate: B-server-pkcs7-visible-tsa.pdf ---
+  valid=True  sigs=1  ts=True  dss=False  ltv=False
+  ✅ validate B-server-pkcs7-visible-tsa.pdf (sigs=1 ts=True dss=False ltv=False)
+
+--- validate: B-server-pkcs7-visible.pdf ---
+  valid=True  sigs=1  ts=False  dss=False  ltv=False
+  ✅ validate B-server-pkcs7-visible.pdf (sigs=1 ts=False dss=False ltv=False)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION E: CLI Verify (local offline)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+--- verify: A-cli-pades-B-B-invisible.pdf ---
+  ts=false  dss=false  ltv=false
+  ✅ verify A-cli-pades-B-B-invisible.pdf (ts=false dss=false ltv=false)
+
+--- verify: A-cli-pades-B-LT-invisible.pdf ---
+  ts=true  dss=false  ltv=true
+  ✅ verify A-cli-pades-B-LT-invisible.pdf (ts=true dss=false ltv=true)
+
+--- verify: A-cli-pades-B-LTA-invisible.pdf ---
+  ts=true  dss=false  ltv=true
+  ✅ verify A-cli-pades-B-LTA-invisible.pdf (ts=true dss=false ltv=true)
+
+--- verify: A-cli-pades-B-T-invisible.pdf ---
+  ts=true  dss=false  ltv=false
+  ✅ verify A-cli-pades-B-T-invisible.pdf (ts=true dss=false ltv=false)
+
+--- verify: A-cli-pades-BT-visible.pdf ---
+  ts=true  dss=false  ltv=false
+  ✅ verify A-cli-pades-BT-visible.pdf (ts=true dss=false ltv=false)
+
+--- verify: A-cli-pkcs7-crl-ocsp-tsa.pdf ---
+  ts=true  dss=false  ltv=true
+  ✅ verify A-cli-pkcs7-crl-ocsp-tsa.pdf (ts=true dss=false ltv=true)
+
+--- verify: A-cli-pkcs7-crl-ocsp.pdf ---
+  ts=false  dss=false  ltv=false
+  ✅ verify A-cli-pkcs7-crl-ocsp.pdf (ts=false dss=false ltv=false)
+
+--- verify: A-cli-pkcs7-crl-only.pdf ---
+  ts=false  dss=false  ltv=false
+  ✅ verify A-cli-pkcs7-crl-only.pdf (ts=false dss=false ltv=false)
+
+--- verify: A-cli-pkcs7-invisible.pdf ---
+  ts=false  dss=false  ltv=false
+  ✅ verify A-cli-pkcs7-invisible.pdf (ts=false dss=false ltv=false)
+
+--- verify: A-cli-pkcs7-ltv-full-visible.pdf ---
+  ts=true  dss=false  ltv=true
+  ✅ verify A-cli-pkcs7-ltv-full-visible.pdf (ts=true dss=false ltv=true)
+
+--- verify: A-cli-pkcs7-ocsp-only.pdf ---
+  ts=false  dss=false  ltv=false
+  ✅ verify A-cli-pkcs7-ocsp-only.pdf (ts=false dss=false ltv=false)
+
+--- verify: A-cli-pkcs7-visible.pdf ---
+  ts=false  dss=false  ltv=false
+  ✅ verify A-cli-pkcs7-visible.pdf (ts=false dss=false ltv=false)
+
+--- verify: B-server-pades-B-B-invisible.pdf ---
+  ts=false  dss=false  ltv=false
+  ✅ verify B-server-pades-B-B-invisible.pdf (ts=false dss=false ltv=false)
+
+--- verify: B-server-pades-B-B-visible.pdf ---
+  ts=false  dss=false  ltv=false
+  ✅ verify B-server-pades-B-B-visible.pdf (ts=false dss=false ltv=false)
+
+--- verify: B-server-pades-B-LT-invisible.pdf ---
+  ts=true  dss=true  ltv=true
+  ✅ verify B-server-pades-B-LT-invisible.pdf (ts=true dss=true ltv=true)
+
+--- verify: B-server-pades-B-LT-visible.pdf ---
+  ts=true  dss=true  ltv=true
+  ✅ verify B-server-pades-B-LT-visible.pdf (ts=true dss=true ltv=true)
+
+--- verify: B-server-pades-B-LTA-invisible.pdf ---
+  ts=true  dss=true  ltv=true
+  ✅ verify B-server-pades-B-LTA-invisible.pdf (ts=true dss=true ltv=true)
+
+--- verify: B-server-pades-B-LTA-visible.pdf ---
+  ts=true  dss=true  ltv=true
+  ✅ verify B-server-pades-B-LTA-visible.pdf (ts=true dss=true ltv=true)
+
+--- verify: B-server-pades-B-T-invisible.pdf ---
+  ts=true  dss=false  ltv=false
+  ✅ verify B-server-pades-B-T-invisible.pdf (ts=true dss=false ltv=false)
+
+--- verify: B-server-pades-B-T-visible.pdf ---
+  ts=true  dss=false  ltv=false
+  ✅ verify B-server-pades-B-T-visible.pdf (ts=true dss=false ltv=false)
+
+--- verify: B-server-pkcs7-crl-ocsp-tsa.pdf ---
+  ts=true  dss=false  ltv=true
+  ✅ verify B-server-pkcs7-crl-ocsp-tsa.pdf (ts=true dss=false ltv=true)
+
+--- verify: B-server-pkcs7-crl-ocsp.pdf ---
+  ts=false  dss=false  ltv=false
+  ✅ verify B-server-pkcs7-crl-ocsp.pdf (ts=false dss=false ltv=false)
+
+--- verify: B-server-pkcs7-crl-only.pdf ---
+  ts=false  dss=false  ltv=false
+  ✅ verify B-server-pkcs7-crl-only.pdf (ts=false dss=false ltv=false)
+
+--- verify: B-server-pkcs7-invisible-tsa.pdf ---
+  ts=true  dss=false  ltv=false
+  ✅ verify B-server-pkcs7-invisible-tsa.pdf (ts=true dss=false ltv=false)
+
+--- verify: B-server-pkcs7-invisible.pdf ---
+  ts=false  dss=false  ltv=false
+  ✅ verify B-server-pkcs7-invisible.pdf (ts=false dss=false ltv=false)
+
+--- verify: B-server-pkcs7-ltv-full-visible.pdf ---
+  ts=true  dss=false  ltv=true
+  ✅ verify B-server-pkcs7-ltv-full-visible.pdf (ts=true dss=false ltv=true)
+
+--- verify: B-server-pkcs7-ocsp-only.pdf ---
+  ts=false  dss=false  ltv=false
+  ✅ verify B-server-pkcs7-ocsp-only.pdf (ts=false dss=false ltv=false)
+
+--- verify: B-server-pkcs7-visible-tsa.pdf ---
+  ts=true  dss=false  ltv=false
+  ✅ verify B-server-pkcs7-visible-tsa.pdf (ts=true dss=false ltv=false)
+
+--- verify: B-server-pkcs7-visible.pdf ---
+  ts=false  dss=false  ltv=false
+  ✅ verify B-server-pkcs7-visible.pdf (ts=false dss=false ltv=false)
+
+╔═══════════════════════════════════════════════════════════════╗
+║                     FINAL SUMMARY                             ║
+╠═══════════════════════════════════════════════════════════════╣
+║  Total:  95                                                  ║
+║  Passed: 95                                                  ║
+║  Failed: 0                                                   ║
+╠═══════════════════════════════════════════════════════════════╣
+║  A: Client CLI sign (PAdES B-B/T/LT/LTA + PKCS7 inv/vis)    ║
+║  B: Server signPdf/form (PAdES 4×inv + 4×vis + PKCS7 ×4)    ║
+║  C: CSC signDoc/form (PAdES B-B/B-T + PKCS7 ×2)             ║
+║  D: Server validate/form (all signed PDFs)                    ║
+║  E: CLI verify (all signed PDFs)                              ║
+╚═══════════════════════════════════════════════════════════════╝
+
+🎉 ALL 95 TESTS PASSED
+
+Output: /tmp/signing-retest-1772886938
+Report: /tmp/signing-retest-1772886938/report.txt
