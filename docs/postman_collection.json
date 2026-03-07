@@ -1,0 +1,634 @@
+{
+  "info": {
+    "name": "Remote Signature PDF — CSC v2 API",
+    "description": "Complete API collection for the Remote Signature PDF service.\n\nBased on the Cloud Signature Consortium (CSC) API v2 protocol.\n\n## Quick Start\n1. Run request '1. Login' to get a Bearer token (auto-saved to variable)\n2. Use any signing or credentials endpoint\n\n## Test Credentials\n- Username: `testuser`\n- Password: `testpass`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "remote-signature-pdf"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "credentialID",
+      "value": "credential-001",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "CSC v2 — Core Protocol",
+      "item": [
+        {
+          "name": "1. Service Info",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/csc/v2/info",
+              "host": ["{{baseUrl}}"],
+              "path": ["csc", "v2", "info"]
+            },
+            "description": "Returns service metadata: name, supported formats, PAdES levels, available methods.\n\nNo authentication required."
+          },
+          "response": []
+        },
+        {
+          "name": "2. Login (Get Bearer Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.access_token) {",
+                  "    pm.collectionVariables.set('token', jsonData.access_token);",
+                  "    console.log('Token saved: ' + jsonData.access_token.substring(0, 20) + '...');",
+                  "}",
+                  "",
+                  "pm.test('Login successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(jsonData.access_token).to.be.a('string');",
+                  "    pm.expect(jsonData.token_type).to.eql('Bearer');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "testuser",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "testpass",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rememberMe\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/csc/v2/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["csc", "v2", "auth", "login"]
+            },
+            "description": "Authenticate with Basic Auth credentials. Returns a JWT Bearer token that is automatically saved to the `token` collection variable.\n\n**Test credentials**: testuser / testpass"
+          },
+          "response": []
+        },
+        {
+          "name": "3. List Credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/csc/v2/credentials/list",
+              "host": ["{{baseUrl}}"],
+              "path": ["csc", "v2", "credentials", "list"]
+            },
+            "description": "List available signing credential IDs for the authenticated user."
+          },
+          "response": []
+        },
+        {
+          "name": "4. Credential Info (Chain)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"credentialID\": \"{{credentialID}}\",\n  \"certificates\": \"chain\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/csc/v2/credentials/info",
+              "host": ["{{baseUrl}}"],
+              "path": ["csc", "v2", "credentials", "info"]
+            },
+            "description": "Get the full certificate chain and key info for a signing credential.\n\nSet `certificates` to `chain` to get the full chain (user + intermediate + root)."
+          },
+          "response": []
+        },
+        {
+          "name": "5. Sign Hash",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"credentialID\": \"{{credentialID}}\",\n  \"hashes\": [\"MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=\"],\n  \"hashAlgo\": \"2.16.840.1.101.3.4.2.1\",\n  \"signAlgo\": \"1.2.840.113549.1.1.11\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/csc/v2/signatures/signHash",
+              "host": ["{{baseUrl}}"],
+              "path": ["csc", "v2", "signatures", "signHash"]
+            },
+            "description": "Standard CSC endpoint. Send a Base64-encoded 32-byte SHA-256 hash.\n\n**Note**: This is simplified. Use signDoc for correct PDF signatures."
+          },
+          "response": []
+        },
+        {
+          "name": "6. Sign Doc (PAdES B-B)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"credentialID\": \"{{credentialID}}\",\n  \"documentContent\": \"U2FtcGxlRG9jdW1lbnRDb250ZW50MTIzNDU2Nzg5MA==\",\n  \"hashAlgo\": \"2.16.840.1.101.3.4.2.1\",\n  \"signAlgo\": \"1.2.840.113549.1.1.11\",\n  \"signatureFormat\": \"pades\",\n  \"padesLevel\": \"B-B\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/csc/v2/signatures/signDoc",
+              "host": ["{{baseUrl}}"],
+              "path": ["csc", "v2", "signatures", "signDoc"]
+            },
+            "description": "**Recommended** signing endpoint. Send Base64-encoded byte-range content.\n\nThe server computes the hash internally and builds a proper CMS SignedData."
+          },
+          "response": []
+        },
+        {
+          "name": "7. Sign Doc (PKCS7)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"credentialID\": \"{{credentialID}}\",\n  \"documentContent\": \"U2FtcGxlRG9jdW1lbnRDb250ZW50MTIzNDU2Nzg5MA==\",\n  \"hashAlgo\": \"2.16.840.1.101.3.4.2.1\",\n  \"signAlgo\": \"1.2.840.113549.1.1.11\",\n  \"signatureFormat\": \"pkcs7\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/csc/v2/signatures/signDoc",
+              "host": ["{{baseUrl}}"],
+              "path": ["csc", "v2", "signatures", "signDoc"]
+            },
+            "description": "Sign with PKCS#7 format (adbe.pkcs7.detached)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Server-Side Sign (signPdf)",
+      "item": [
+        {
+          "name": "Sign PDF — JSON (PAdES + Visible)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"credentialID\": \"{{credentialID}}\",\n  \"pdfContent\": \"<BASE64_PDF_HERE>\",\n  \"imageContent\": \"<BASE64_IMAGE_HERE>\",\n  \"sigRect\": [50, 50, 250, 150],\n  \"sigPage\": 1,\n  \"signerName\": \"John Doe\",\n  \"signatureFormat\": \"pades\",\n  \"padesLevel\": \"B-B\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/signPdf",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "signPdf"]
+            },
+            "description": "Full server-side PDF signing via JSON.\n\nReplace `<BASE64_PDF_HERE>` with Base64-encoded PDF content.\nReplace `<BASE64_IMAGE_HERE>` with Base64-encoded PNG/JPEG (optional)."
+          },
+          "response": []
+        },
+        {
+          "name": "Sign PDF — JSON (Invisible)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"credentialID\": \"{{credentialID}}\",\n  \"pdfContent\": \"<BASE64_PDF_HERE>\",\n  \"signatureFormat\": \"pades\",\n  \"padesLevel\": \"B-B\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/signPdf",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "signPdf"]
+            },
+            "description": "Server-side signing without visible image (invisible signature)."
+          },
+          "response": []
+        },
+        {
+          "name": "Sign PDF — Form Upload (Visible → Binary)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "description": "PDF file to sign"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "description": "Signature image (PNG/JPEG)"
+                },
+                {
+                  "key": "sigRect",
+                  "value": "50,50,250,150",
+                  "type": "text"
+                },
+                {
+                  "key": "signerName",
+                  "value": "John Doe",
+                  "type": "text"
+                },
+                {
+                  "key": "signatureFormat",
+                  "value": "pades",
+                  "type": "text"
+                },
+                {
+                  "key": "padesLevel",
+                  "value": "B-B",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/signPdf/form",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "signPdf", "form"]
+            },
+            "description": "Upload a PDF file + optional image directly. Returns the signed PDF as a binary download.\n\nSelect files for 'file' and 'image' fields before sending."
+          },
+          "response": []
+        },
+        {
+          "name": "Sign PDF — Form Upload (Invisible → JSON)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "description": "PDF file to sign"
+                },
+                {
+                  "key": "signatureFormat",
+                  "value": "pades",
+                  "type": "text"
+                },
+                {
+                  "key": "padesLevel",
+                  "value": "B-B",
+                  "type": "text"
+                },
+                {
+                  "key": "responseFormat",
+                  "value": "json",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/signPdf/form",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "signPdf", "form"]
+            },
+            "description": "Upload PDF, get JSON response with Base64-encoded signed PDF."
+          },
+          "response": []
+        },
+        {
+          "name": "Sign PDF — Form Upload (PKCS7)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "description": "PDF file to sign"
+                },
+                {
+                  "key": "signatureFormat",
+                  "value": "pkcs7",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/signPdf/form",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "signPdf", "form"]
+            },
+            "description": "Sign with PKCS#7 format via form upload."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Form-Data Signing (signDoc)",
+      "item": [
+        {
+          "name": "Sign Doc — Form Upload (JSON response)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "description": "Byte-range content file"
+                },
+                {
+                  "key": "signatureFormat",
+                  "value": "pades",
+                  "type": "text"
+                },
+                {
+                  "key": "padesLevel",
+                  "value": "B-B",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/csc/v2/signatures/signDoc/form",
+              "host": ["{{baseUrl}}"],
+              "path": ["csc", "v2", "signatures", "signDoc", "form"]
+            },
+            "description": "Upload byte-range content as a file. Returns JSON with Base64-encoded CMS signature."
+          },
+          "response": []
+        },
+        {
+          "name": "Sign Doc — Form Upload (Binary CMS)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "description": "Byte-range content file"
+                },
+                {
+                  "key": "signatureFormat",
+                  "value": "pades",
+                  "type": "text"
+                },
+                {
+                  "key": "responseFormat",
+                  "value": "binary",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/csc/v2/signatures/signDoc/form",
+              "host": ["{{baseUrl}}"],
+              "path": ["csc", "v2", "signatures", "signDoc", "form"]
+            },
+            "description": "Upload byte-range content. Returns raw CMS/PKCS#7 DER bytes."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Validation",
+      "item": [
+        {
+          "name": "Validate PDF — JSON",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pdfContent\": \"<BASE64_SIGNED_PDF_HERE>\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "validate"]
+            },
+            "description": "Validate a signed PDF. Replace `<BASE64_SIGNED_PDF_HERE>` with Base64-encoded signed PDF.\n\nNo authentication required.\n\nReturns comprehensive per-signature validation results including:\n- Digest integrity\n- CMS signature validity\n- Certificate chain\n- ByteRange checks\n- LTV/DSS status\n- Modification detection\n- Security warnings"
+          },
+          "response": []
+        },
+        {
+          "name": "Validate PDF — Form Upload",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "description": "Signed PDF file to validate"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/validate/form",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "validate", "form"]
+            },
+            "description": "Upload a signed PDF directly for validation. No Base64 encoding needed.\n\nNo authentication required."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Error Handling",
+      "item": [
+        {
+          "name": "Sign without Auth → 401",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"credentialID\": \"credential-001\",\n  \"pdfContent\": \"dGVzdA==\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/signPdf",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "signPdf"]
+            },
+            "description": "Attempt to sign without a Bearer token. Should return 401."
+          },
+          "response": []
+        },
+        {
+          "name": "Sign with Wrong Credential → 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"credentialID\": \"wrong-credential\",\n  \"pdfContent\": \"dGVzdA==\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/signPdf",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "signPdf"]
+            },
+            "description": "Attempt to sign with an invalid credential ID. Should return 403."
+          },
+          "response": []
+        },
+        {
+          "name": "Login with Wrong Password → 401",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "testuser",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "wrongpassword",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rememberMe\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/csc/v2/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["csc", "v2", "auth", "login"]
+            },
+            "description": "Login with wrong password. Should return 401."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
+
