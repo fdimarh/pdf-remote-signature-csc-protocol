@@ -1,5 +1,6 @@
 /target
 *.log
+JOURNEY.md
 
 # Test artifacts — keep only sample files
 test-files/*.pdf
