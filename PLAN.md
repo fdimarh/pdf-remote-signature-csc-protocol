@@ -34,14 +34,23 @@ A **client-server** remote PDF signing system based on the **Cloud Signature Con
 │  /csc/v2/credentials/info  — Get certificate chain details   │
 │  /csc/v2/signatures/signHash — Sign a hash (simplified)      │
 │  /csc/v2/signatures/signDoc  — Sign content (⭐ recommended) │
+│  /csc/v2/signatures/signDoc/form — Sign content (file upload)│
 │  /api/v1/signPdf             — Full server-side signing ⭐⭐   │
+│  /api/v1/signPdf/form        — Full signing (file upload)    │
 │  /api/v1/validate          — Validate signed PDF             │
+│  /api/v1/validate/form     — Validate (file upload)          │
 │                                                              │
 │  Signing Formats:                                            │
-│    • PKCS#7 (adbe.pkcs7.detached)                           │
+│    • PKCS#7 (adbe.pkcs7.detached) + LTV (CRL/OCSP)         │
 │    • PAdES  (ETSI.CAdES.detached)                           │
 │                                                              │
-│  PAdES Levels: B-B, B-T, B-LT, B-LTA                       │
+│  PAdES Levels: B-B, B-T, B-LT (DSS), B-LTA (doc timestamp) │
+│                                                              │
+│  LTV Pipeline (server/ltv.rs):                               │
+│    • CRL/OCSP fetching from cert extensions                  │
+│    • adbe-revocationInfoArchival CMS attribute               │
+│    • DSS dictionary appending                                │
+│    • RFC 3161 document timestamp (B-LTA)                     │
 │                                                              │
 │  PKI Backend:                                                │
 │    • X.509 certificate chain + private key (PEM files)       │
@@ -757,11 +766,75 @@ remote-signature-pdf/
     - `prepare_pdf_for_signing_from_bytes()` for in-memory PDF loading via tempfile
     - Works with all formats (PAdES, PKCS7), levels, and visible/invisible modes
 
-### Phase 6: Future Enhancements (Optional)
+### Phase 6: Form-Data & API Documentation ✅
+**Goal:** Production-ready API surface with file upload support
+
+21. ✅ **Multipart form-data endpoints:**
+    - `server/multipart.rs` — generic field extraction helper
+    - `POST /api/v1/signPdf/form` — upload PDF + image, get binary PDF or JSON
+    - `POST /api/v1/validate/form` — upload signed PDF for validation
+    - `POST /csc/v2/signatures/signDoc/form` — upload byte-range content
+    - Supports `responseFormat=binary` (raw PDF) or `json`
+
+22. ✅ **OpenAPI 3.0 specification** (`docs/openapi.yaml`):
+    - Full spec for all 11 endpoints with request/response schemas
+    - Import into Swagger UI, Redoc, or any OpenAPI tool
+
+23. ✅ **Postman collection** (`docs/postman_collection.json`):
+    - 17 requests across 4 folders
+    - Auto-saves Bearer token from login
+
+24. ✅ **MIT License** (`LICENSE` file + Cargo.toml metadata)
+
+### Phase 7: LTV / DSS / Timestamp Pipeline ✅
+**Goal:** Proper PAdES B-LT/B-LTA and PKCS7 LTV support
+
+25. ✅ **LTV module** (`server/ltv.rs`):
+    - CRL/OCSP URL extraction from X.509 certificate extensions
+    - HTTP fetching of CRL and OCSP responses
+    - `adbe-revocationInfoArchival` CMS signed attribute construction
+    - DSS (Document Security Store) dictionary appending to PDF
+    - RFC 3161 timestamp token fetching
+    - Document-level timestamp appending for B-LTA
+
+26. ✅ **PAdES B-LT implementation:**
+    - After CMS embedding: append DSS dictionary with CRLs, OCSPs, and certificates
+    - Verified output: ~61KB (with DSS)
+
+27. ✅ **PAdES B-LTA implementation:**
+    - After DSS: append document-level timestamp via RFC 3161
+    - Verified output: ~92KB (with DSS + document timestamp)
+
+28. ✅ **PKCS7 LTV support:**
+    - `includeCrl` / `includeOcsp` flags in signDoc and signPdf/form
+    - CRL/OCSP data embedded as CMS signed attributes
+    - CLI: `--include-crl` / `--include-ocsp` flags
+
+29. ✅ **TSA deadlock fix:**
+    - Wrapped `build_cms_with_options()` in `tokio::task::spawn_blocking()`
+    - `cryptographic-message-syntax` uses synchronous HTTP internally
+    - Prevents async runtime deadlock when contacting TSA servers
+
+30. ✅ **Signature placeholder increase:**
+    - Increased from 30,000 to 50,000 hex chars
+    - Accommodates CMS with embedded CRL+OCSP revocation data
+
+### Phase 8: Comprehensive Testing ✅
+**Goal:** Full coverage across all signing variants
+
+31. ✅ **Comprehensive test script** (`test-files/test_all_signing.sh`):
+    - **Section A**: Client CLI — PAdES B-B/B-T/B-LT/B-LTA + PKCS7 + PKCS7 LTV (12 tests)
+    - **Section B**: Server signPdf/form — PAdES 4×inv + 4×vis + PKCS7 ×4 + PKCS7 LTV ×5 (17 tests)
+    - **Section C**: CSC signDoc/form — PAdES + PKCS7 + PKCS7 LTV variants (8 tests)
+    - **Section D**: Server validation of all signed PDFs (29 tests)
+    - **Section E**: CLI offline verification of all signed PDFs (29 tests)
+    - **Total: 95 tests — all passing ✅**
+
+### Phase 9: Future Enhancements (Optional)
 - Multiple signers / serial signing
 - Credential authorization (SAD flow)
-- Swagger/OpenAPI documentation
 - WebSocket for long-running signing operations
+- PKCS#11 / HSM integration for production key management
 
 ---
 
@@ -776,6 +849,10 @@ remote-signature-pdf/
 | PDF Library | `pdf_signing` (existing) | Already handles ByteRange, placeholder, CMS embedding |
 | Hash Algorithm | SHA-256 | CSC default, widely supported |
 | Sign Algorithm | RSA-SHA256 (1.2.840.113549.1.1.11) | Common, well-tested |
+| TSA Integration | `spawn_blocking` | CMS lib uses sync HTTP; prevents tokio deadlock |
+| LTV Data | CMS signed attributes + DSS | adbe-revocationInfoArchival for CRL/OCSP in CMS |
+| Signature Placeholder | 50,000 hex chars | Accommodates CMS + CRL + OCSP revocation data |
+| Form-Data | `actix-multipart` | Direct file upload, no Base64 encoding needed |
 
 ---
 
@@ -825,6 +902,7 @@ Client                                    Server
 # Server
 actix-web = "4"
 actix-rt = "2"
+actix-multipart = "0.7"
 jsonwebtoken = "9"
 
 # Client HTTP
@@ -841,15 +919,24 @@ env_logger = "0.11"
 uuid = { version = "1", features = ["v4"] }
 tokio = { version = "1", features = ["full"] }
 clap = { version = "4", features = ["derive"] }
+futures-util = "0.3"
+tempfile = "3"
 
 # PKI / Crypto
 x509-certificate = "0.25"
 cryptographic-message-syntax = "0.28"
 bcder = "0.7"
+x509-parser = "0.16"          # CRL/OCSP URL extraction from extensions
+rasn = "0.22"                  # ASN.1 encoding
+rasn-ocsp = "0.22"             # OCSP request/response
+rasn-pkix = "0.22"             # X.509/PKI structures
 
 # PDF (existing library)
 pdf_signing = { path = "../rust_pdf_signing" }
 lopdf = { version = "0.39", features = ["chrono"], default-features = false }
+
+# Image processing
+image = "0.25"
 ```
 
 ---
@@ -890,7 +977,15 @@ cargo run -- sign \
   --format pades --level B-T \
   --tsa-url http://timestamp.digicert.com
 
-# 9. Verify locally (comprehensive output)
+# 7. PKCS7 with LTV (CRL + OCSP + timestamp)
+cargo run -- sign \
+  --server-url http://localhost:8080 \
+  --input test-files/sample.pdf \
+  --output test-files/signed-pkcs7-ltv.pdf \
+  --format pkcs7 --include-crl --include-ocsp \
+  --tsa-url http://timestamp.digicert.com
+
+# 8. Verify locally (comprehensive output)
 cargo run -- verify --input test-files/signed.pdf
 
 # 10. Validate via server API

@@ -11,14 +11,17 @@ The **server** acts as a PKI / Trust Service Provider (TSP) managing X.509 certi
 - **CSC v2 Protocol** — Standards-based remote signing with `signHash` and `signDoc` endpoints
 - **Full Server-Side Signing** — Upload a PDF + optional image, get back a fully signed PDF in one call (`signPdf`)
 - **Multiple Signature Formats** — PKCS#7 (`adbe.pkcs7.detached`) and PAdES (`ETSI.CAdES.detached`)
-- **PAdES Conformance Levels** — B-B, B-T (timestamped), B-LT, B-LTA
+- **PAdES Conformance Levels** — B-B, B-T (timestamped), B-LT (long-term with DSS), B-LTA (archival with doc timestamp)
+- **LTV / Long-Term Validation** — CRL/OCSP revocation data embedded in CMS, DSS dictionary appended to PDF, document timestamps for B-LTA
+- **PKCS7 LTV Support** — `--include-crl` / `--include-ocsp` flags for embedding revocation data in PKCS#7 signatures
 - **Visible Signatures** — Embed a PNG/JPEG image as a visible signature on any page (client-side or server-side rendering)
 - **Comprehensive Validation** — 20+ cryptographic and structural checks (digest, chain, ByteRange, wrapping attacks, MDP, LTV)
 - **Multi-Level Certificate Chains** — Supports 2-level (self-signed) and 3-level (Nowina DSS) PKI chains
-- **TSA Timestamp Support** — Integrates with external Timestamp Authorities for B-T/B-LT/B-LTA levels
+- **TSA Timestamp Support** — Integrates with external Timestamp Authorities (e.g., DigiCert) for B-T/B-LT/B-LTA levels
 - **Form-Data Upload** — All signing/validation endpoints support `multipart/form-data` with binary PDF response
 - **OpenAPI 3.0 Spec** — Machine-readable API spec at `docs/openapi.yaml`
 - **Postman Collection** — Ready-to-use collection at `docs/postman_collection.json`
+- **95 Automated Tests** — Comprehensive test suite covering all signing variants, validation, and verification
 
 ---
 
@@ -111,6 +114,15 @@ cargo run -- sign \
   --image signature.png \
   --sig-rect "50,50,250,150" \
   --sig-page 1
+
+# PKCS#7 with LTV (CRL + OCSP + timestamp)
+cargo run -- sign \
+  --server-url http://localhost:8080 \
+  --input test-files/sample.pdf \
+  --output signed-pkcs7-ltv.pdf \
+  --format pkcs7 \
+  --include-crl --include-ocsp \
+  --tsa-url http://timestamp.digicert.com
 ```
 
 **Server-side signing** (server handles everything in one call):
@@ -358,50 +370,50 @@ The server auto-detects the layout: if `ca-chain.pem` exists in the cert directo
 ```
 remote-signature-pdf/
 ├── Cargo.toml
+├── LICENSE                            # MIT License
 ├── README.md
-├── PLAN.md                           # Detailed architecture & API reference
+├── PLAN.md                            # Detailed architecture & API reference
 ├── docs/
 │   ├── openapi.yaml                   # OpenAPI 3.0 specification
 │   └── postman_collection.json        # Postman collection (import-ready)
 ├── certs/
-│   ├── generate_certs.sh             # Generate legacy self-signed certs
-│   ├── ca-cert.pem, ca-key.pem       # Legacy CA
-│   ├── user-cert.pem, user-key.pem   # Legacy user
-│   └── nowina/                        # Nowina DSS 3-level chain ⭐
-│       ├── user-cert.pem              # CN=good-user-crl-ocsp
-│       ├── user-key.pem              # PKCS#8, 3072-bit RSA
-│       └── ca-chain.pem              # Intermediate + Root CA
+│   ├── generate_certs.sh              # Generate legacy self-signed certs
+│   ├── ca-cert.pem, ca-key.pem        # Legacy CA
+│   ├── user-cert.pem, user-key.pem    # Legacy user
+│   └── nowina/                         # Nowina DSS 3-level chain ⭐
+│       ├── user-cert.pem               # CN=good-user-crl-ocsp
+│       ├── user-key.pem               # PKCS#8, 3072-bit RSA
+│       └── ca-chain.pem               # Intermediate + Root CA
 ├── src/
-│   ├── main.rs                        # CLI: server, sign, sign-remote, verify, validate
+│   ├── main.rs                         # CLI: server, sign, sign-remote, verify, validate
 │   ├── common/
-│   │   └── csc_types.rs               # Shared CSC API request/response types
+│   │   └── csc_types.rs                # Shared CSC API request/response types
 │   ├── server/
-│   │   ├── app.rs                     # Actix-web app setup & routing
-│   │   ├── auth.rs                    # JWT authentication
-│   │   ├── credentials.rs             # Credential listing & cert chain
-│   │   ├── info.rs                    # Service metadata
-│   │   ├── multipart.rs              # Form-data upload helper utilities
-│   │   ├── pki.rs                     # PKI loading (multi-level chain support)
-│   │   ├── signing.rs                 # signHash & signDoc (JSON + form-data)
-│   │   ├── sign_pdf.rs               # signPdf (JSON + form-data, binary response)
-│   │   └── validation.rs             # Validate (JSON + form-data)
+│   │   ├── app.rs                      # Actix-web app setup & routing
+│   │   ├── auth.rs                     # JWT authentication
+│   │   ├── credentials.rs              # Credential listing & cert chain
+│   │   ├── info.rs                     # Service metadata
+│   │   ├── ltv.rs                      # CRL/OCSP/DSS/timestamp (LTV pipeline) ⭐
+│   │   ├── multipart.rs               # Form-data upload helper utilities
+│   │   ├── pki.rs                      # PKI loading (multi-level chain support)
+│   │   ├── signing.rs                  # signHash & signDoc (JSON + form-data)
+│   │   ├── sign_pdf.rs                # signPdf (JSON + form-data, binary response)
+│   │   └── validation.rs              # Validate (JSON + form-data)
 │   └── client/
-│       ├── csc_client.rs              # HTTP client for all CSC API + signPdf
-│       ├── pdf_preparer.rs            # PDF placeholder & hash computation
-│       ├── signature_appearance.rs    # Visible signature image → PDF XObject
-│       ├── pdf_finalizer.rs           # Embed CMS into PDF
-│       └── workflow.rs                # End-to-end signing orchestration
+│       ├── csc_client.rs               # HTTP client for all CSC API + signPdf
+│       ├── pdf_preparer.rs             # PDF placeholder & hash computation
+│       ├── signature_appearance.rs     # Visible signature image → PDF XObject
+│       ├── pdf_finalizer.rs            # Embed CMS into PDF
+│       └── workflow.rs                 # End-to-end signing orchestration
 ├── examples/
-│   ├── gen_test_pdf.rs                # Generate a test PDF
-│   ├── gen_test_signature_image.rs    # Generate a test signature PNG
-│   └── test_all_variants.rs           # Test all format/level combinations
+│   ├── gen_test_pdf.rs                 # Generate a test PDF
+│   ├── gen_test_signature_image.rs     # Generate a test signature PNG
+│   └── test_all_variants.rs            # Test all format/level combinations
 └── test-files/
-    ├── test_comprehensive.sh          # Full test suite (35 tests, all scenarios)
-    ├── test_endpoints.sh              # Test all CSC API endpoints
-    ├── test_form_data.sh              # Test form-data upload endpoints
-    ├── test_visible_signature.sh      # Test visible signature signing
-    ├── test_server_side_sign.sh       # Test server-side signPdf
-    └── test_nowina_cert.sh            # Test Nowina cert chain
+    ├── sample.pdf                      # Test input PDF
+    ├── signature-image.png             # Test signature image
+    ├── test_all_signing.sh             # Comprehensive test suite (95 tests) ⭐
+    └── all-signing-test-report.txt     # Test report (95/95 passed)
 ```
 
 ---
@@ -443,6 +455,8 @@ Options:
   --image <FILE>        Signature image (PNG/JPEG) for visible signature
   --sig-page <NUM>      Page number [default: 1]
   --sig-rect <RECT>     "x1,y1,x2,y2" in PDF points [default: 50,50,250,150]
+  --include-crl         Include CRL revocation data in CMS (PKCS7 LTV)
+  --include-ocsp        Include OCSP revocation data in CMS (PKCS7 LTV)
 ```
 
 ### `sign-remote`
@@ -490,8 +504,10 @@ Options:
 | `reqwest` | HTTP client |
 | `serde` / `serde_json` | JSON serialization |
 | `clap` | CLI argument parsing |
-| `x509-certificate` | X.509 certificate parsing |
+| `x509-certificate` | X.509 certificate parsing and CMS building |
 | `cryptographic-message-syntax` | CMS/PKCS#7 SignedData builder |
+| `x509-parser` | X.509 extension parsing (CRL/OCSP URLs) |
+| `rasn` / `rasn-ocsp` / `rasn-pkix` | ASN.1/OCSP request/response encoding |
 | `sha2` | SHA-256 hashing |
 | `lopdf` | PDF structure manipulation |
 | `pdf_signing` | PDF signature validation (local path dep) |
