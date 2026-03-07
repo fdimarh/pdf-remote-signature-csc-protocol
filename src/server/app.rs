@@ -1,6 +1,7 @@
 //! Actix-web application setup and shared state.
 
 use crate::server::pki::PkiState;
+use actix_multipart::form::MultipartFormConfig;
 use actix_web::{web, App, HttpServer, middleware::Logger};
 use std::path::Path;
 
@@ -24,6 +25,9 @@ pub async fn run_server(cert_dir: &Path, host: &str, port: u16) -> std::io::Resu
             .app_data(state.clone())
             // Increase JSON payload limit to 50 MB for large PDFs + images
             .app_data(web::JsonConfig::default().limit(50 * 1024 * 1024))
+            // Increase multipart payload limit to 50 MB for form-data uploads
+            .app_data(MultipartFormConfig::default().total_limit(50 * 1024 * 1024))
+            .app_data(web::PayloadConfig::default().limit(50 * 1024 * 1024))
             .configure(crate::server::info::configure)
             .configure(crate::server::auth::configure)
             .configure(crate::server::credentials::configure)
