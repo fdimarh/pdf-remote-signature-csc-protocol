@@ -1,12 +1,19 @@
 /target
-*.pdf
 *.log
-*.png
 
-# Test artifacts
-test-files/_*
+# Test artifacts — keep only sample files
+test-files/*.pdf
+test-files/*.json
+test-files/*.p7s
+test-files/*.p12
+test-files/*.pem
 test-files/*.txt
+test-files/*.sh
 test-files/certs-test/
+test-files/form-variants/
+test-files/ltv-fix/
+!test-files/sample.pdf
+!test-files/signature-image.png
 
 # IDE
 .idea/
