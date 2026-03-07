@@ -513,5 +513,5 @@ Options:
 
 ## License
 
-This project is a prototype for educational and research purposes.
+This project is licensed under the [MIT License](LICENSE).
 
