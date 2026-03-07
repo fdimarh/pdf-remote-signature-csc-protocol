@@ -303,6 +303,10 @@ pub(crate) fn build_cms_with_options(
         ca_certs.push(ca_cert);
     }
 
+    // Full certificate chain: user + CA certs
+    let mut full_chain = vec![user_cert.clone()];
+    full_chain.extend(ca_certs.iter().cloned());
+
     // ESS-signing-certificate-v2 attribute (always included for both PKCS7 and PAdES)
     let cert_hash = {
         let mut hasher = Sha256::new();
@@ -322,37 +326,64 @@ pub(crate) fn build_cms_with_options(
     );
 
     // Determine what to include based on format and level
+    // (matching the reference library's digitally_sign_document logic)
     let is_pades = options.signature_format == "pades";
+    let include_cms_revocation;
     let include_timestamp;
-    let _include_dss;
 
     if is_pades {
         match options.pades_level.as_str() {
             "B-B" => {
+                include_cms_revocation = false;
                 include_timestamp = false;
-                _include_dss = false;
             }
             "B-T" => {
+                include_cms_revocation = options.include_crl || options.include_ocsp;
                 include_timestamp = true;
-                _include_dss = false;
             }
-            "B-LT" => {
+            "B-LT" | "B-LTA" => {
+                // Long-Term: always include CMS revocation + timestamp
+                include_cms_revocation = true;
                 include_timestamp = true;
-                _include_dss = true;
-            }
-            "B-LTA" => {
-                include_timestamp = true;
-                _include_dss = true;
             }
             _ => {
+                include_cms_revocation = false;
                 include_timestamp = false;
-                _include_dss = false;
             }
         }
     } else {
-        // PKCS7 format
+        // PKCS7: include revocation when user requests CRL or OCSP
+        let wants_revocation = options.include_crl || options.include_ocsp;
+        include_cms_revocation = wants_revocation;
         include_timestamp = options.timestamp_url.is_some();
-        _include_dss = false;
+    }
+
+    // Add adbe-revocationInfoArchival signed attribute (CRL/OCSP in CMS)
+    if include_cms_revocation {
+        let crl_flag = if is_pades {
+            matches!(options.pades_level.as_str(), "B-LT" | "B-LTA") || options.include_crl
+        } else {
+            true // PKCS7 LTV: always include both
+        };
+        let ocsp_flag = if is_pades {
+            matches!(options.pades_level.as_str(), "B-LT" | "B-LTA") || options.include_ocsp
+        } else {
+            true
+        };
+
+        log::info!(
+            "Fetching revocation data: crl={}, ocsp={} for {} cert(s)",
+            crl_flag, ocsp_flag, full_chain.len()
+        );
+
+        if let Some((oid, values)) =
+            crate::server::ltv::build_adbe_revocation_attribute(&full_chain, crl_flag, ocsp_flag)
+        {
+            log::info!("Added adbe-revocationInfoArchival signed attribute");
+            signer = signer.signed_attribute(oid, values);
+        } else {
+            log::warn!("No revocation data could be fetched for CMS attribute");
+        }
     }
 
     // Add timestamp via TSA

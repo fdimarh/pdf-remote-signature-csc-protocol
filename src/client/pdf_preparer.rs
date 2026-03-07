@@ -63,7 +63,7 @@ pub fn prepare_pdf_for_signing(
     signer_name: &str,
     visible_config: Option<&VisibleSignatureConfig>,
 ) -> Result<PreparedPdf> {
-    let signature_size: usize = 30_000; // hex chars in Contents placeholder
+    let signature_size: usize = 50_000; // hex chars in Contents placeholder (25KB, enough for CMS + CRL/OCSP)
 
     log::info!("Loading PDF from {:?}", input_path);
     let mut doc = IncrementalDocument::load(input_path)

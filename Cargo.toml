@@ -43,6 +43,10 @@ bcder = "0.7"
 pem = "3"
 rsa = { version = "0.9", features = ["sha2"] }
 pkcs8 = { version = "0.10", features = ["pem"] }
+x509-parser = { version = "0.16", features = ["verify"] }
+rasn = "0.28"
+rasn-ocsp = "0.28"
+rasn-pkix = "0.28"
 
 # Image decoding for visible signatures
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }

@@ -24,6 +24,7 @@ use crate::server::signing::{
 };
 use crate::client::pdf_finalizer;
 use crate::client::pdf_preparer::{self, VisibleSignatureConfigBytes};
+use x509_certificate::CapturedX509Certificate;
 
 /// `POST /api/v1/signPdf`
 ///
@@ -236,7 +237,7 @@ async fn execute_sign_pdf(
     log::info!("CMS signature: {} bytes, format={}, level={}", cms_der.len(), sig_format, pades_level);
 
     // Step 3: Embed CMS into PDF
-    let signed_pdf = match pdf_finalizer::embed_signature(
+    let mut signed_pdf = match pdf_finalizer::embed_signature(
         &prepared.pdf_bytes,
         &cms_der,
         prepared.signature_size,
@@ -250,6 +251,96 @@ async fn execute_sign_pdf(
             }));
         }
     };
+
+    // Step 4: Append DSS dictionary for B-LT and B-LTA (incremental update)
+    let is_pades = sig_format == "pades";
+    let include_dss = is_pades && matches!(pades_level.as_str(), "B-LT" | "B-LTA");
+
+    if include_dss {
+        log::info!("Appending DSS dictionary for PAdES {}", pades_level);
+
+        // Build the full certificate chain for DSS
+        let pki_clone = pki.clone();
+        let pdf_for_dss = signed_pdf.clone();
+        let dss_result = tokio::task::spawn_blocking(move || {
+            let user_cert = CapturedX509Certificate::from_der(pki_clone.user_cert_der.clone())
+                .map_err(|e| format!("{}", e))?;
+            let mut chain = vec![user_cert];
+            for ca_der in &pki_clone.ca_chain_der {
+                let ca = CapturedX509Certificate::from_der(ca_der.clone())
+                    .map_err(|e| format!("{}", e))?;
+                chain.push(ca);
+            }
+            crate::server::ltv::append_dss_dictionary(pdf_for_dss, chain)
+        })
+        .await;
+
+        match dss_result {
+            Ok(Ok(pdf_with_dss)) => {
+                log::info!(
+                    "DSS appended: {} → {} bytes",
+                    signed_pdf.len(),
+                    pdf_with_dss.len()
+                );
+                signed_pdf = pdf_with_dss;
+            }
+            Ok(Err(e)) => {
+                log::error!("DSS append failed: {}", e);
+                return Err(HttpResponse::InternalServerError().json(CscErrorResponse {
+                    error: "server_error".into(),
+                    error_description: format!("Failed to append DSS: {}", e),
+                }));
+            }
+            Err(e) => {
+                log::error!("DSS task panicked: {}", e);
+                return Err(HttpResponse::InternalServerError().json(CscErrorResponse {
+                    error: "server_error".into(),
+                    error_description: "Internal error appending DSS".into(),
+                }));
+            }
+        }
+    }
+
+    // Step 5: Append document-level timestamp for B-LTA (incremental update)
+    if is_pades && pades_level == "B-LTA" {
+        if let Some(ref tsa_url) = params.timestamp_url {
+            log::info!("Appending document timestamp for PAdES B-LTA");
+
+            let pdf_for_ts = signed_pdf.clone();
+            let tsa = tsa_url.clone();
+            let ts_result = tokio::task::spawn_blocking(move || {
+                crate::server::ltv::append_document_timestamp(pdf_for_ts, &tsa, 30_000)
+            })
+            .await;
+
+            match ts_result {
+                Ok(Ok(pdf_with_ts)) => {
+                    log::info!(
+                        "Document timestamp appended: {} → {} bytes",
+                        signed_pdf.len(),
+                        pdf_with_ts.len()
+                    );
+                    signed_pdf = pdf_with_ts;
+                }
+                Ok(Err(e)) => {
+                    log::error!("Document timestamp failed: {}", e);
+                    return Err(HttpResponse::InternalServerError().json(CscErrorResponse {
+                        error: "server_error".into(),
+                        error_description: format!("Failed to add document timestamp: {}", e),
+                    }));
+                }
+                Err(e) => {
+                    log::error!("Document timestamp task panicked: {}", e);
+                    return Err(HttpResponse::InternalServerError().json(CscErrorResponse {
+                        error: "server_error".into(),
+                        error_description: "Internal error adding document timestamp".into(),
+                    }));
+                }
+            }
+        } else {
+            log::warn!("B-LTA requested but no TSA URL provided for document timestamp");
+        }
+    }
 
     log::info!(
         "User '{}' signed PDF (server-side): {} → {} bytes, format={}, level={}, visible={}",
