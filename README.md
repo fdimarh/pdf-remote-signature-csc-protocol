@@ -178,16 +178,19 @@ Default test credentials: `testuser` / `testpass`
 
 ### Endpoints
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/csc/v2/info` | No | Service metadata and capabilities |
-| POST | `/csc/v2/auth/login` | Basic | Authenticate and get Bearer token |
-| POST | `/csc/v2/credentials/list` | Bearer | List available signing credentials |
-| POST | `/csc/v2/credentials/info` | Bearer | Get certificate chain and key info |
-| POST | `/csc/v2/signatures/signHash` | Bearer | Sign a SHA-256 hash (standard CSC) |
-| POST | `/csc/v2/signatures/signDoc` | Bearer | Sign byte-range content (recommended) |
-| POST | `/api/v1/signPdf` | Bearer | Full server-side PDF signing |
-| POST | `/api/v1/validate` | No | Validate a signed PDF |
+| Method | Path | Auth | Content-Type | Description |
+|--------|------|------|--------------|-------------|
+| POST | `/csc/v2/info` | No | JSON | Service metadata and capabilities |
+| POST | `/csc/v2/auth/login` | Basic | JSON | Authenticate and get Bearer token |
+| POST | `/csc/v2/credentials/list` | Bearer | JSON | List available signing credentials |
+| POST | `/csc/v2/credentials/info` | Bearer | JSON | Get certificate chain and key info |
+| POST | `/csc/v2/signatures/signHash` | Bearer | JSON | Sign a SHA-256 hash (standard CSC) |
+| POST | `/csc/v2/signatures/signDoc` | Bearer | JSON | Sign byte-range content (recommended) |
+| POST | `/csc/v2/signatures/signDoc/form` | Bearer | **form-data** | Sign byte-range content (file upload) |
+| POST | `/api/v1/signPdf` | Bearer | JSON | Full server-side PDF signing |
+| POST | `/api/v1/signPdf/form` | Bearer | **form-data** | Full server-side PDF signing (file upload) |
+| POST | `/api/v1/validate` | No | JSON | Validate a signed PDF |
+| POST | `/api/v1/validate/form` | No | **form-data** | Validate a signed PDF (file upload) |
 
 ### `POST /api/v1/signPdf` — Full Server-Side Signing
 
@@ -237,6 +240,81 @@ Returns per-signature validation results including:
 | `certificationPermissionOk` | MDP permissions respected |
 | `hasTimestamp` | CMS contains a TSA timestamp |
 | `isLtvEnabled` | DSS dictionary present for long-term validation |
+
+---
+
+### Form-Data Endpoints (Multipart File Upload)
+
+All `/form` endpoints accept `multipart/form-data` — no Base64 encoding needed. Files are uploaded directly with `curl -F`.
+
+#### `POST /api/v1/signPdf/form` — Sign PDF via file upload
+
+```bash
+# Sign with visible signature → get raw PDF back
+curl -X POST http://localhost:8080/api/v1/signPdf/form \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@document.pdf" \
+  -F "image=@signature.png" \
+  -F "sigRect=50,50,250,150" \
+  -F "signerName=John Doe" \
+  -F "signatureFormat=pades" \
+  -F "padesLevel=B-B" \
+  -o signed.pdf
+
+# Sign invisible → get JSON response
+curl -X POST http://localhost:8080/api/v1/signPdf/form \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@document.pdf" \
+  -F "responseFormat=json"
+```
+
+| Form Field | Required | Default | Description |
+|------------|----------|---------|-------------|
+| `file` | ✅ | — | PDF file upload |
+| `image` | | — | PNG/JPEG signature image file upload |
+| `credentialID` | | `credential-001` | Signing credential |
+| `signerName` | | `Digital Signature` | Signer display name |
+| `signatureFormat` | | `pades` | `pkcs7` or `pades` |
+| `padesLevel` | | `B-B` | PAdES level |
+| `sigRect` | when image | `50,50,250,150` | `x1,y1,x2,y2` in PDF points |
+| `sigPage` | | `1` | Page number (1-based) |
+| `timestampUrl` | | — | TSA URL |
+| `includeCrl` | | `false` | Embed CRL data |
+| `includeOcsp` | | `false` | Embed OCSP data |
+| `responseFormat` | | `binary` | `binary` (raw PDF) or `json` |
+
+**Response formats:**
+- `binary` (default): `Content-Type: application/pdf` with raw PDF bytes
+- `json`: Same JSON structure as `/api/v1/signPdf`
+
+#### `POST /api/v1/validate/form` — Validate via file upload
+
+```bash
+curl -X POST http://localhost:8080/api/v1/validate/form \
+  -F "file=@signed.pdf"
+```
+
+| Form Field | Required | Description |
+|------------|----------|-------------|
+| `file` | ✅ | Signed PDF file upload |
+| `password` | | Password for encrypted PDFs |
+
+#### `POST /csc/v2/signatures/signDoc/form` — Sign content via file upload
+
+```bash
+curl -X POST http://localhost:8080/csc/v2/signatures/signDoc/form \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@byte_range_content.bin" \
+  -F "signatureFormat=pades"
+```
+
+| Form Field | Required | Default | Description |
+|------------|----------|---------|-------------|
+| `file` | ✅ | — | Byte-range content file |
+| `credentialID` | | `credential-001` | Signing credential |
+| `signatureFormat` | | `pades` | `pkcs7` or `pades` |
+| `padesLevel` | | `B-B` | PAdES level |
+| `responseFormat` | | `json` | `json` or `binary` (raw CMS DER) |
 
 ---
 
@@ -296,10 +374,11 @@ remote-signature-pdf/
 │   │   ├── auth.rs                    # JWT authentication
 │   │   ├── credentials.rs             # Credential listing & cert chain
 │   │   ├── info.rs                    # Service metadata
+│   │   ├── multipart.rs              # Form-data upload helper utilities
 │   │   ├── pki.rs                     # PKI loading (multi-level chain support)
-│   │   ├── signing.rs                 # signHash & signDoc CMS building
-│   │   ├── sign_pdf.rs               # signPdf — full server-side signing
-│   │   └── validation.rs             # PDF signature validation
+│   │   ├── signing.rs                 # signHash & signDoc (JSON + form-data)
+│   │   ├── sign_pdf.rs               # signPdf (JSON + form-data, binary response)
+│   │   └── validation.rs             # Validate (JSON + form-data)
 │   └── client/
 │       ├── csc_client.rs              # HTTP client for all CSC API + signPdf
 │       ├── pdf_preparer.rs            # PDF placeholder & hash computation
