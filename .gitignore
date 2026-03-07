@@ -1,0 +1,16 @@
+/target
+*.pdf
+*.log
+*.png
+
+# Test artifacts
+test-files/_*
+test-files/*.txt
+test-files/certs-test/
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store

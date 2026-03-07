@@ -1,0 +1,48 @@
+[package]
+name = "remote-signature-pdf"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "remote-signature-pdf"
+path = "src/main.rs"
+
+[dependencies]
+# Server
+actix-web = "4"
+actix-rt = "2"
+jsonwebtoken = "9"
+
+# Client HTTP
+reqwest = { version = "0.12", features = ["json", "blocking"] }
+
+# Shared
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+sha2 = "0.10"
+chrono = { version = "0.4", features = ["serde"] }
+log = "0.4"
+env_logger = "0.11"
+uuid = { version = "1", features = ["v4"] }
+tokio = { version = "1", features = ["full"] }
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+thiserror = "2"
+rand = "0.9"
+tempfile = "3"
+
+# PKI / Crypto
+x509-certificate = "0.25"
+cryptographic-message-syntax = "0.28"
+bcder = "0.7"
+pem = "3"
+rsa = { version = "0.9", features = ["sha2"] }
+pkcs8 = { version = "0.10", features = ["pem"] }
+
+# Image decoding for visible signatures
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+
+# PDF (existing library as path dependency)
+pdf_signing = { path = "../rust_pdf_signing" }
+lopdf = { version = "0.39", features = ["chrono"], default-features = false }
