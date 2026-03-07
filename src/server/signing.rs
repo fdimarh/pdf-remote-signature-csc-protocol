@@ -5,6 +5,7 @@
 //!              with correct messageDigest. This is the recommended endpoint
 //!              for this prototype since it produces valid PDF signatures.
 
+use actix_multipart::Multipart;
 use actix_web::{web, HttpRequest, HttpResponse};
 use base64::Engine;
 use bcder::Mode::Der;
@@ -380,6 +381,152 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     .route(
         "/csc/v2/signatures/signDoc",
         web::post().to(sign_doc_handler),
+    )
+    .route(
+        "/csc/v2/signatures/signDoc/form",
+        web::post().to(sign_doc_form_handler),
     );
+}
+
+/// `POST /csc/v2/signatures/signDoc/form`
+///
+/// Multipart form-data alternative for signDoc.
+///
+/// Form fields:
+/// - `file` (required): Raw byte-range content file upload
+/// - `credentialID`: Signing credential [default: "credential-001"]
+/// - `signatureFormat`: "pkcs7" or "pades" [default: "pades"]
+/// - `padesLevel`: PAdES level [default: "B-B"]
+/// - `timestampUrl`: TSA URL (optional)
+/// - `includeCrl`: "true"/"false" [default: false]
+/// - `includeOcsp`: "true"/"false" [default: false]
+///
+/// Returns JSON with base64-encoded CMS signature (same as JSON endpoint),
+/// or raw CMS DER bytes if `responseFormat=binary` is set.
+///
+/// Example with curl:
+/// ```sh
+/// curl -X POST http://localhost:8080/csc/v2/signatures/signDoc/form \
+///   -H "Authorization: Bearer <token>" \
+///   -F "file=@byte_range_content.bin" \
+///   -F "signatureFormat=pades" \
+///   -F "padesLevel=B-B"
+/// ```
+pub async fn sign_doc_form_handler(
+    req: HttpRequest,
+    payload: Multipart,
+    state: web::Data<AppState>,
+) -> HttpResponse {
+    use crate::server::multipart::extract_multipart_fields;
+
+    let claims = match validate_bearer_token(&req) {
+        Ok(c) => c,
+        Err(resp) => return resp,
+    };
+
+    let fields = match extract_multipart_fields(payload).await {
+        Ok(f) => f,
+        Err(e) => {
+            return HttpResponse::BadRequest().json(CscErrorResponse {
+                error: "invalid_request".into(),
+                error_description: format!("Failed to parse form data: {}", e),
+            });
+        }
+    };
+
+    // Required: content file
+    let content_bytes = match fields.get("file") {
+        Some(f) if !f.bytes.is_empty() => f.bytes.clone(),
+        _ => {
+            return HttpResponse::BadRequest().json(CscErrorResponse {
+                error: "invalid_request".into(),
+                error_description: "Missing required field 'file' (byte-range content)".into(),
+            });
+        }
+    };
+
+    let credential_id = fields
+        .get("credentialID")
+        .and_then(|f| f.as_text())
+        .unwrap_or("credential-001")
+        .to_string();
+
+    if !has_credential_access(&claims.sub, &credential_id) {
+        return forbidden_response(&credential_id);
+    }
+
+    let sig_format = fields
+        .get("signatureFormat")
+        .and_then(|f| f.as_text())
+        .unwrap_or("pades")
+        .to_lowercase();
+
+    let pades_level = fields
+        .get("padesLevel")
+        .and_then(|f| f.as_text())
+        .unwrap_or("B-B")
+        .to_uppercase()
+        .replace("BB", "B-B").replace("BT", "B-T")
+        .replace("BLT", "B-LT").replace("BLTA", "B-LTA");
+
+    let timestamp_url = fields
+        .get("timestampUrl")
+        .and_then(|f| f.as_text())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string());
+
+    let include_crl = fields.get("includeCrl").map(|f| f.as_bool()).unwrap_or(false);
+    let include_ocsp = fields.get("includeOcsp").map(|f| f.as_bool()).unwrap_or(false);
+
+    let response_format = fields
+        .get("responseFormat")
+        .and_then(|f| f.as_text())
+        .unwrap_or("json")
+        .to_lowercase();
+
+    log::info!(
+        "Form-data signDoc: {} bytes, format={}, level={}",
+        content_bytes.len(), sig_format, pades_level,
+    );
+
+    let cms_options = CmsSigningOptions {
+        signature_format: sig_format.clone(),
+        pades_level: pades_level.clone(),
+        timestamp_url,
+        include_crl,
+        include_ocsp,
+    };
+
+    let pki = &state.pki;
+    match build_cms_with_options(pki, &content_bytes, &cms_options) {
+        Ok(cms_der) => {
+            log::info!(
+                "User '{}' form-signed doc with '{}' — format={}, level={}, CMS {} bytes",
+                claims.sub, credential_id, sig_format, pades_level, cms_der.len()
+            );
+
+            if response_format == "binary" {
+                HttpResponse::Ok()
+                    .content_type("application/pkcs7-signature")
+                    .insert_header(("Content-Disposition", "attachment; filename=\"signature.p7s\""))
+                    .body(cms_der)
+            } else {
+                let b64 = base64::engine::general_purpose::STANDARD;
+                let pades_level_resp = if sig_format == "pades" { Some(pades_level) } else { None };
+                HttpResponse::Ok().json(SignDocResponse {
+                    signature: b64.encode(&cms_der),
+                    signature_format: sig_format,
+                    pades_level: pades_level_resp,
+                })
+            }
+        }
+        Err(e) => {
+            log::error!("CMS build failed: {}", e);
+            HttpResponse::InternalServerError().json(CscErrorResponse {
+                error: "server_error".to_string(),
+                error_description: format!("Signing failed: {}", e),
+            })
+        }
+    }
 }
 
