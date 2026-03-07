@@ -85,13 +85,24 @@ pub async fn sign_hash_handler(
         };
 
         // Build CMS with hash as external content (simplified)
-        match build_cms_from_content(pki, &hash_bytes) {
-            Ok(cms_der) => signatures.push(b64.encode(&cms_der)),
-            Err(e) => {
+        let pki_clone = pki.clone();
+        let hash = hash_bytes.clone();
+        match tokio::task::spawn_blocking(move || {
+            build_cms_from_content(&pki_clone, &hash)
+        }).await {
+            Ok(Ok(cms_der)) => signatures.push(b64.encode(&cms_der)),
+            Ok(Err(e)) => {
                 log::error!("CMS build failed for hash[{}]: {}", i, e);
                 return HttpResponse::InternalServerError().json(CscErrorResponse {
                     error: "server_error".to_string(),
                     error_description: format!("Signing failed: {}", e),
+                });
+            }
+            Err(e) => {
+                log::error!("CMS signing task panicked for hash[{}]: {}", i, e);
+                return HttpResponse::InternalServerError().json(CscErrorResponse {
+                    error: "server_error".to_string(),
+                    error_description: "Internal signing error".to_string(),
                 });
             }
         }
@@ -175,8 +186,15 @@ pub async fn sign_doc_handler(
         include_ocsp: body.include_ocsp,
     };
 
-    match build_cms_with_options(pki, &content_bytes, &cms_options) {
-        Ok(cms_der) => {
+    let pki_clone = pki.clone();
+    let content = content_bytes.clone();
+    let cms_opts = cms_options.clone();
+    let cms_result = tokio::task::spawn_blocking(move || {
+        build_cms_with_options(&pki_clone, &content, &cms_opts)
+    }).await;
+
+    match cms_result {
+        Ok(Ok(cms_der)) => {
             log::info!(
                 "User '{}' signed document with '{}' — format={}, level={}, CMS {} bytes",
                 claims.sub,
@@ -196,11 +214,18 @@ pub async fn sign_doc_handler(
                 pades_level: pades_level_resp,
             })
         }
-        Err(e) => {
+        Ok(Err(e)) => {
             log::error!("CMS build failed: {}", e);
             HttpResponse::InternalServerError().json(CscErrorResponse {
                 error: "server_error".to_string(),
                 error_description: format!("Signing failed: {}", e),
+            })
+        }
+        Err(e) => {
+            log::error!("CMS signing task panicked: {}", e);
+            HttpResponse::InternalServerError().json(CscErrorResponse {
+                error: "server_error".to_string(),
+                error_description: "Internal signing error".to_string(),
             })
         }
     }
@@ -222,6 +247,7 @@ pub(crate) fn forbidden_response(credential_id: &str) -> HttpResponse {
 }
 
 /// Options for CMS signature building
+#[derive(Clone)]
 pub(crate) struct CmsSigningOptions {
     pub(crate) signature_format: String,
     pub(crate) pades_level: String,
@@ -497,9 +523,15 @@ pub async fn sign_doc_form_handler(
         include_ocsp,
     };
 
-    let pki = &state.pki;
-    match build_cms_with_options(pki, &content_bytes, &cms_options) {
-        Ok(cms_der) => {
+    let pki_clone = state.pki.clone();
+    let content = content_bytes.clone();
+    let cms_opts = cms_options.clone();
+    let cms_result = tokio::task::spawn_blocking(move || {
+        build_cms_with_options(&pki_clone, &content, &cms_opts)
+    }).await;
+
+    match cms_result {
+        Ok(Ok(cms_der)) => {
             log::info!(
                 "User '{}' form-signed doc with '{}' — format={}, level={}, CMS {} bytes",
                 claims.sub, credential_id, sig_format, pades_level, cms_der.len()
@@ -520,11 +552,18 @@ pub async fn sign_doc_form_handler(
                 })
             }
         }
-        Err(e) => {
+        Ok(Err(e)) => {
             log::error!("CMS build failed: {}", e);
             HttpResponse::InternalServerError().json(CscErrorResponse {
                 error: "server_error".to_string(),
                 error_description: format!("Signing failed: {}", e),
+            })
+        }
+        Err(e) => {
+            log::error!("CMS signing task panicked: {}", e);
+            HttpResponse::InternalServerError().json(CscErrorResponse {
+                error: "server_error".to_string(),
+                error_description: "Internal signing error".to_string(),
             })
         }
     }

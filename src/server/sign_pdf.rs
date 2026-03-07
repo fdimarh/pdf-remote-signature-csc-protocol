@@ -94,7 +94,7 @@ pub async fn sign_pdf_handler(
     };
 
     let (signed_pdf, sig_format, pades_level_resp, has_visible) =
-        match execute_sign_pdf(&params, &state.pki, &claims.sub) {
+        match execute_sign_pdf(&params, &state.pki, &claims.sub).await {
             Ok(result) => result,
             Err(resp) => return resp,
         };
@@ -135,7 +135,7 @@ struct SignPdfParams {
 /// Execute the full server-side signing pipeline.
 ///
 /// Shared by `sign_pdf_handler` (JSON) and `sign_pdf_form_handler` (form-data).
-fn execute_sign_pdf(
+async fn execute_sign_pdf(
     params: &SignPdfParams,
     pki: &crate::server::pki::PkiState,
     username: &str,
@@ -206,13 +206,29 @@ fn execute_sign_pdf(
         include_ocsp: params.include_ocsp,
     };
 
-    let cms_der = match build_cms_with_options(pki, &prepared.content_to_sign, &cms_options) {
-        Ok(cms) => cms,
-        Err(e) => {
+    // Run CMS building on a blocking thread — the TSA timestamp request
+    // uses a synchronous HTTP client internally which would deadlock tokio.
+    let pki_clone = pki.clone();
+    let content = prepared.content_to_sign.clone();
+    let cms_opts = cms_options.clone();
+    let cms_der = match tokio::task::spawn_blocking(move || {
+        build_cms_with_options(&pki_clone, &content, &cms_opts)
+    })
+    .await
+    {
+        Ok(Ok(cms)) => cms,
+        Ok(Err(e)) => {
             log::error!("CMS signing failed: {}", e);
             return Err(HttpResponse::InternalServerError().json(CscErrorResponse {
                 error: "server_error".into(),
                 error_description: format!("CMS signing failed: {}", e),
+            }));
+        }
+        Err(e) => {
+            log::error!("CMS signing task panicked: {}", e);
+            return Err(HttpResponse::InternalServerError().json(CscErrorResponse {
+                error: "server_error".into(),
+                error_description: "Internal signing error".into(),
             }));
         }
     };
@@ -419,7 +435,7 @@ pub async fn sign_pdf_form_handler(
     };
 
     let (signed_pdf, sig_format, pades_level_resp, has_visible) =
-        match execute_sign_pdf(&params, &state.pki, &claims.sub) {
+        match execute_sign_pdf(&params, &state.pki, &claims.sub).await {
             Ok(result) => result,
             Err(resp) => return resp,
         };
