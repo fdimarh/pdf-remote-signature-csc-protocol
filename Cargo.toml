@@ -11,6 +11,8 @@ path = "src/main.rs"
 # Server
 actix-web = "4"
 actix-rt = "2"
+actix-multipart = "0.7"
+futures-util = "0.3"
 jsonwebtoken = "9"
 
 # Client HTTP
