@@ -1,23 +1,23 @@
 ╔═══════════════════════════════════════════════════════════════╗
 ║  Comprehensive Signing & Validation Retest                    ║
-║  2026-03-07 19:35:38                                          ║
+║  2026-03-08 13:54:30                                          ║
 ╚═══════════════════════════════════════════════════════════════╝
 
-Server PID=43135, Port=9100
-Output:  /tmp/signing-retest-1772886938
+Server PID=65262, Port=9100
+Output:  /tmp/signing-retest-1772952870
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SECTION A: Client-Side Signing (CLI → CSC signDoc → local embed)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 --- A-cli-pades-B-B-invisible ---
-  ✅ A-cli-pades-B-B-invisible (51341 bytes)
+  ✅ A-cli-pades-B-B-invisible (51340 bytes)
 
 --- A-cli-pades-B-T-invisible ---
   ✅ A-cli-pades-B-T-invisible (51341 bytes)
 
 --- A-cli-pades-B-LT-invisible ---
-  ✅ A-cli-pades-B-LT-invisible (51340 bytes)
+  ✅ A-cli-pades-B-LT-invisible (51341 bytes)
 
 --- A-cli-pades-B-LTA-invisible ---
   ✅ A-cli-pades-B-LTA-invisible (51341 bytes)
@@ -26,45 +26,61 @@ SECTION A: Client-Side Signing (CLI → CSC signDoc → local embed)
   ✅ A-cli-pades-BT-visible (52231 bytes)
 
 --- A-cli-pkcs7-invisible ---
-  ✅ A-cli-pkcs7-invisible (51341 bytes)
+  ✅ A-cli-pkcs7-invisible (51339 bytes)
 
 --- A-cli-pkcs7-visible ---
   ✅ A-cli-pkcs7-visible (52231 bytes)
 
 --- A-cli-pkcs7-crl-only ---
-  ✅ A-cli-pkcs7-crl-only (51341 bytes)
+  ✅ A-cli-pkcs7-crl-only (51340 bytes)
 
 --- A-cli-pkcs7-ocsp-only ---
-  ✅ A-cli-pkcs7-ocsp-only (51341 bytes)
+  ✅ A-cli-pkcs7-ocsp-only (51340 bytes)
 
 --- A-cli-pkcs7-crl-ocsp ---
-  ✅ A-cli-pkcs7-crl-ocsp (51340 bytes)
+  ✅ A-cli-pkcs7-crl-ocsp (51341 bytes)
 
 --- A-cli-pkcs7-crl-ocsp-tsa ---
-  ✅ A-cli-pkcs7-crl-ocsp-tsa (51341 bytes)
+  ✅ A-cli-pkcs7-crl-ocsp-tsa (51340 bytes)
 
 --- A-cli-pkcs7-ltv-full-visible ---
   ✅ A-cli-pkcs7-ltv-full-visible (52231 bytes)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION A-HASH: Client-Side signHash (hash-only, bandwidth-efficient)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+--- AH-cli-signhash-pades-invisible ---
+  ✅ AH-cli-signhash-pades-invisible (51341 bytes)
+
+--- AH-cli-signhash-pades-visible ---
+  ✅ AH-cli-signhash-pades-visible (52231 bytes)
+
+--- AH-cli-signhash-pkcs7-invisible ---
+  ✅ AH-cli-signhash-pkcs7-invisible (51340 bytes)
+
+--- AH-cli-signhash-pkcs7-visible ---
+  ✅ AH-cli-signhash-pkcs7-visible (52231 bytes)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SECTION B: Server-Side Signing (POST /api/v1/signPdf/form)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 --- B-server-pades-B-B-invisible ---
-  HTTP=200, Size=51298
-  ✅ B-server-pades-B-B-invisible (51298 bytes)
+  HTTP=200, Size=51297
+  ✅ B-server-pades-B-B-invisible (51297 bytes)
 
 --- B-server-pades-B-T-invisible ---
-  HTTP=200, Size=51297
-  ✅ B-server-pades-B-T-invisible (51297 bytes)
+  HTTP=200, Size=51298
+  ✅ B-server-pades-B-T-invisible (51298 bytes)
 
 --- B-server-pades-B-LT-invisible ---
   HTTP=200, Size=61168
   ✅ B-server-pades-B-LT-invisible (61168 bytes)
 
 --- B-server-pades-B-LTA-invisible ---
-  HTTP=200, Size=91846
-  ✅ B-server-pades-B-LTA-invisible (91846 bytes)
+  HTTP=200, Size=91845
+  ✅ B-server-pades-B-LTA-invisible (91845 bytes)
 
 --- B-server-pades-B-B-visible ---
   HTTP=200, Size=52182
@@ -75,16 +91,16 @@ SECTION B: Server-Side Signing (POST /api/v1/signPdf/form)
   ✅ B-server-pades-B-T-visible (52182 bytes)
 
 --- B-server-pades-B-LT-visible ---
-  HTTP=200, Size=62052
-  ✅ B-server-pades-B-LT-visible (62052 bytes)
+  HTTP=200, Size=62053
+  ✅ B-server-pades-B-LT-visible (62053 bytes)
 
 --- B-server-pades-B-LTA-visible ---
-  HTTP=200, Size=92735
-  ✅ B-server-pades-B-LTA-visible (92735 bytes)
+  HTTP=200, Size=92736
+  ✅ B-server-pades-B-LTA-visible (92736 bytes)
 
 --- B-server-pkcs7-invisible ---
-  HTTP=200, Size=51298
-  ✅ B-server-pkcs7-invisible (51298 bytes)
+  HTTP=200, Size=51297
+  ✅ B-server-pkcs7-invisible (51297 bytes)
 
 --- B-server-pkcs7-visible ---
   HTTP=200, Size=52182
@@ -206,6 +222,22 @@ SECTION D: Server-Side Validation (POST /api/v1/validate/form)
   valid=True  sigs=1  ts=False  dss=False  ltv=False
   ✅ validate A-cli-pkcs7-visible.pdf (sigs=1 ts=False dss=False ltv=False)
 
+--- validate: AH-cli-signhash-pades-invisible.pdf ---
+  valid=True  sigs=1  ts=False  dss=False  ltv=False
+  ✅ validate AH-cli-signhash-pades-invisible.pdf (sigs=1 ts=False dss=False ltv=False)
+
+--- validate: AH-cli-signhash-pades-visible.pdf ---
+  valid=True  sigs=1  ts=False  dss=False  ltv=False
+  ✅ validate AH-cli-signhash-pades-visible.pdf (sigs=1 ts=False dss=False ltv=False)
+
+--- validate: AH-cli-signhash-pkcs7-invisible.pdf ---
+  valid=True  sigs=1  ts=False  dss=False  ltv=False
+  ✅ validate AH-cli-signhash-pkcs7-invisible.pdf (sigs=1 ts=False dss=False ltv=False)
+
+--- validate: AH-cli-signhash-pkcs7-visible.pdf ---
+  valid=True  sigs=1  ts=False  dss=False  ltv=False
+  ✅ validate AH-cli-signhash-pkcs7-visible.pdf (sigs=1 ts=False dss=False ltv=False)
+
 --- validate: B-server-pades-B-B-invisible.pdf ---
   valid=True  sigs=1  ts=False  dss=False  ltv=False
   ✅ validate B-server-pades-B-B-invisible.pdf (sigs=1 ts=False dss=False ltv=False)
@@ -326,6 +358,22 @@ SECTION E: CLI Verify (local offline)
   ts=false  dss=false  ltv=false
   ✅ verify A-cli-pkcs7-visible.pdf (ts=false dss=false ltv=false)
 
+--- verify: AH-cli-signhash-pades-invisible.pdf ---
+  ts=false  dss=false  ltv=false
+  ✅ verify AH-cli-signhash-pades-invisible.pdf (ts=false dss=false ltv=false)
+
+--- verify: AH-cli-signhash-pades-visible.pdf ---
+  ts=false  dss=false  ltv=false
+  ✅ verify AH-cli-signhash-pades-visible.pdf (ts=false dss=false ltv=false)
+
+--- verify: AH-cli-signhash-pkcs7-invisible.pdf ---
+  ts=false  dss=false  ltv=false
+  ✅ verify AH-cli-signhash-pkcs7-invisible.pdf (ts=false dss=false ltv=false)
+
+--- verify: AH-cli-signhash-pkcs7-visible.pdf ---
+  ts=false  dss=false  ltv=false
+  ✅ verify AH-cli-signhash-pkcs7-visible.pdf (ts=false dss=false ltv=false)
+
 --- verify: B-server-pades-B-B-invisible.pdf ---
   ts=false  dss=false  ltv=false
   ✅ verify B-server-pades-B-B-invisible.pdf (ts=false dss=false ltv=false)
@@ -397,18 +445,19 @@ SECTION E: CLI Verify (local offline)
 ╔═══════════════════════════════════════════════════════════════╗
 ║                     FINAL SUMMARY                             ║
 ╠═══════════════════════════════════════════════════════════════╣
-║  Total:  95                                                  ║
-║  Passed: 95                                                  ║
+║  Total:  107                                                 ║
+║  Passed: 107                                                 ║
 ║  Failed: 0                                                   ║
 ╠═══════════════════════════════════════════════════════════════╣
-║  A: Client CLI sign (PAdES B-B/T/LT/LTA + PKCS7 inv/vis)    ║
-║  B: Server signPdf/form (PAdES 4×inv + 4×vis + PKCS7 ×4)    ║
-║  C: CSC signDoc/form (PAdES B-B/B-T + PKCS7 ×2)             ║
-║  D: Server validate/form (all signed PDFs)                    ║
-║  E: CLI verify (all signed PDFs)                              ║
+║  A:  Client CLI sign (PAdES B-B/T/LT/LTA + PKCS7 inv/vis)  ║
+║  AH: Client CLI signHash (hash-only, bandwidth-efficient)   ║
+║  B:  Server signPdf/form (PAdES 4×inv + 4×vis + PKCS7 ×4)  ║
+║  C:  CSC signDoc/form (PAdES B-B/B-T + PKCS7 ×2)           ║
+║  D:  Server validate/form (all signed PDFs)                  ║
+║  E:  CLI verify (all signed PDFs)                            ║
 ╚═══════════════════════════════════════════════════════════════╝
 
-🎉 ALL 95 TESTS PASSED
+🎉 ALL 107 TESTS PASSED
 
-Output: /tmp/signing-retest-1772886938
-Report: /tmp/signing-retest-1772886938/report.txt
+Output: /tmp/signing-retest-1772952870
+Report: /tmp/signing-retest-1772952870/report.txt

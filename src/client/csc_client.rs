@@ -7,7 +7,8 @@ use reqwest::Client;
 use crate::common::csc_types::{
     AuthLoginRequest, AuthLoginResponse, CredentialsInfoRequest, CredentialsInfoResponse,
     CredentialsListRequest, CredentialsListResponse, CscErrorResponse, InfoResponse,
-    SignDocRequest, SignDocResponse, SignPdfRequest, SignPdfResponse, OID_RSA_SHA256, OID_SHA256,
+    SignDocRequest, SignDocResponse, SignHashRequest, SignHashResponse, SignPdfRequest,
+    SignPdfResponse, OID_RSA_SHA256, OID_SHA256,
 };
 
 /// Client for interacting with a CSC v2 signing server.
@@ -206,6 +207,55 @@ impl CscClient {
         }
 
         resp.json().await.context("Failed to parse signDoc response")
+    }
+
+    /// Sign a pre-computed hash using the server's PKI via the signHash endpoint.
+    ///
+    /// This is the standard CSC signHash flow — only the 32-byte SHA-256 hash
+    /// is sent over the wire, making it much more bandwidth-efficient than
+    /// signDoc (which sends the full byte range content).
+    ///
+    /// Trade-off: The server builds a simplified CMS (PAdES B-B equivalent)
+    /// since it doesn't have the original document content.
+    pub async fn sign_hash(
+        &self,
+        credential_id: &str,
+        hash: &[u8],
+    ) -> Result<SignHashResponse> {
+        let token = self.get_token()?;
+        let url = format!("{}/csc/v2/signatures/signHash", self.base_url);
+        let engine = base64::engine::general_purpose::STANDARD;
+
+        let request = SignHashRequest {
+            credential_id: credential_id.to_string(),
+            sad: None,
+            hashes: vec![engine.encode(hash)],
+            hash_algo: OID_SHA256.to_string(),
+            sign_algo: OID_RSA_SHA256.to_string(),
+        };
+
+        let resp = self
+            .http
+            .post(&url)
+            .bearer_auth(token)
+            .json(&request)
+            .send()
+            .await
+            .context("Failed to call signHash")?;
+
+        if !resp.status().is_success() {
+            let err: CscErrorResponse = resp.json().await.unwrap_or(CscErrorResponse {
+                error: "unknown".into(),
+                error_description: "Sign hash failed".into(),
+            });
+            anyhow::bail!(
+                "signatures/signHash failed: {} — {}",
+                err.error,
+                err.error_description
+            );
+        }
+
+        resp.json().await.context("Failed to parse signHash response")
     }
 
     /// Full server-side PDF signing — upload PDF + optional image,

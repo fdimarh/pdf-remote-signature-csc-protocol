@@ -114,6 +114,12 @@ enum Commands {
         /// Include OCSP revocation data in CMS signed attributes (PKCS7 LTV)
         #[arg(long, default_value_t = false)]
         include_ocsp: bool,
+
+        /// Use CSC signHash instead of signDoc for bandwidth efficiency.
+        /// Only the 32-byte SHA-256 hash is sent over the wire (vs full byte ranges).
+        /// Trade-off: Produces a simplified CMS signature (PAdES B-B equivalent).
+        #[arg(long, default_value_t = false)]
+        use_sign_hash: bool,
     },
 
     /// Verify a signed PDF document (local validation using pdf_signing library)
@@ -233,6 +239,7 @@ async fn main() -> anyhow::Result<()> {
             sig_rect,
             include_crl,
             include_ocsp,
+            use_sign_hash,
         } => {
             log::info!("Starting remote PDF signing...");
             log::info!("  Format: {}, Level: {}", format, level);
@@ -262,6 +269,7 @@ async fn main() -> anyhow::Result<()> {
                 visible_signature: visible_config,
                 include_crl,
                 include_ocsp,
+                use_sign_hash,
             };
 
             client::workflow::sign_pdf(

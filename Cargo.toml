@@ -40,6 +40,7 @@ tempfile = "3"
 x509-certificate = "0.25"
 cryptographic-message-syntax = "0.28"
 bcder = "0.7"
+signature = "2.2"
 pem = "3"
 rsa = { version = "0.9", features = ["sha2"] }
 pkcs8 = { version = "0.10", features = ["pem"] }

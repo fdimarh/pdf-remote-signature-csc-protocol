@@ -28,6 +28,8 @@ pub struct SignOptions {
     pub include_crl: bool,
     /// Include OCSP revocation data in CMS signed attributes
     pub include_ocsp: bool,
+    /// Use CSC signHash instead of signDoc (bandwidth-efficient, simplified CMS)
+    pub use_sign_hash: bool,
 }
 
 impl Default for SignOptions {
@@ -39,6 +41,7 @@ impl Default for SignOptions {
             visible_signature: None,
             include_crl: false,
             include_ocsp: false,
+            use_sign_hash: false,
         }
     }
 }
@@ -112,35 +115,62 @@ pub async fn sign_pdf(
             .collect::<String>()
     );
 
-    // ── Step 6: Sign the document content via CSC server ──
-    log::info!(
-        "Requesting remote signature — format={}, level={}, tsa={:?}",
-        sign_options.signature_format,
-        sign_options.pades_level,
-        sign_options.timestamp_url,
-    );
-    let sign_response = client
-        .sign_doc(
-            credential_id,
-            &prepared.content_to_sign,
-            &sign_options.signature_format,
-            &sign_options.pades_level,
-            sign_options.timestamp_url.as_deref(),
-            sign_options.include_crl,
-            sign_options.include_ocsp,
-        )
-        .await?;
+    // ── Step 6: Sign via CSC server (signDoc or signHash) ──
+    let cms_der = if sign_options.use_sign_hash {
+        // signHash: only send the 32-byte hash — bandwidth-efficient
+        log::info!(
+            "Requesting remote signature via signHash (hash-only, {} bytes over wire)",
+            prepared.hash.len(),
+        );
+        let sign_response = client
+            .sign_hash(credential_id, &prepared.hash)
+            .await?;
 
-    let cms_b64 = &sign_response.signature;
-    let cms_der = b64_engine
-        .decode(cms_b64)
-        .context("Failed to decode CMS signature from Base64")?;
-    log::info!(
-        "Received CMS signature: {} bytes (format={}, level={:?})",
-        cms_der.len(),
-        sign_response.signature_format,
-        sign_response.pades_level,
-    );
+        if sign_response.signatures.is_empty() {
+            anyhow::bail!("signHash returned empty signatures array");
+        }
+        let cms_b64 = &sign_response.signatures[0];
+        let der = b64_engine
+            .decode(cms_b64)
+            .context("Failed to decode CMS signature from Base64")?;
+        log::info!(
+            "Received CMS signature via signHash: {} bytes (simplified CMS)",
+            der.len(),
+        );
+        der
+    } else {
+        // signDoc: send full byte range content — produces proper CMS
+        log::info!(
+            "Requesting remote signature via signDoc — format={}, level={}, tsa={:?} ({} bytes over wire)",
+            sign_options.signature_format,
+            sign_options.pades_level,
+            sign_options.timestamp_url,
+            prepared.content_to_sign.len(),
+        );
+        let sign_response = client
+            .sign_doc(
+                credential_id,
+                &prepared.content_to_sign,
+                &sign_options.signature_format,
+                &sign_options.pades_level,
+                sign_options.timestamp_url.as_deref(),
+                sign_options.include_crl,
+                sign_options.include_ocsp,
+            )
+            .await?;
+
+        let cms_b64 = &sign_response.signature;
+        let der = b64_engine
+            .decode(cms_b64)
+            .context("Failed to decode CMS signature from Base64")?;
+        log::info!(
+            "Received CMS signature via signDoc: {} bytes (format={}, level={:?})",
+            der.len(),
+            sign_response.signature_format,
+            sign_response.pades_level,
+        );
+        der
+    };
 
     // ── Step 7: Embed signature into PDF ──
     log::info!("Embedding signature into PDF...");
@@ -157,9 +187,10 @@ pub async fn sign_pdf(
     log::info!("   Input:  {:?}", input_path);
     log::info!("   Output: {:?}", output_path);
     log::info!(
-        "   Format: {} / {:?}",
-        sign_response.signature_format,
-        sign_response.pades_level.as_deref().unwrap_or("n/a")
+        "   Method: {} | Format: {} / {}",
+        if sign_options.use_sign_hash { "signHash" } else { "signDoc" },
+        sign_options.signature_format,
+        sign_options.pades_level,
     );
 
     Ok(())

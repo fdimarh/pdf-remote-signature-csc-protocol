@@ -847,7 +847,7 @@ fn find_binary_pattern(bytes: &[u8], pattern: &[u8]) -> Option<usize> {
     if bytes.is_empty() || pattern.is_empty() {
         return None;
     }
-    let first = pattern[0];
+    let _first = pattern[0];
     let mut pi = 0;
     let mut start = 0;
     for (i, &b) in bytes.iter().enumerate() {
