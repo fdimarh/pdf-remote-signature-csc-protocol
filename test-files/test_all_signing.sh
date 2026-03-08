@@ -200,33 +200,38 @@ fi
 # ═══════════════════════════════════════════════════════════════
 # SECTION A-HASH: CLIENT-SIDE SIGNING VIA CSC signHash
 #   (bandwidth-efficient — only 32-byte hash sent over the wire)
-#   Produces simplified CMS (PAdES B-B equivalent).
+#   Now supports ALL signing variants: PAdES levels, PKCS7, LTV
 # ═══════════════════════════════════════════════════════════════
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "SECTION A-HASH: Client-Side signHash (hash-only, bandwidth-efficient)"
+echo "SECTION A-HASH: Client-Side signHash (hash-only, all variants)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# AH1: signHash — PAdES invisible (simplified CMS)
-NAME="AH-cli-signhash-pades-invisible"
-echo ""
-echo "--- $NAME ---"
-if RUST_LOG=warn "$BIN" sign --server-url "$BASE" -u testuser -p testpass \
-    --input "$SAMPLE" --output "$OUTDIR/${NAME}.pdf" \
-    --format pades --level B-B --use-sign-hash >/dev/null 2>&1 && [ -f "$OUTDIR/${NAME}.pdf" ]; then
-    SIZE=$(wc -c < "$OUTDIR/${NAME}.pdf" | tr -d ' ')
-    ok "$NAME ($SIZE bytes)"
-else
-    fail "$NAME (sign failed)"
-fi
+# AH1: PAdES all levels — invisible
+for LVL in B-B B-T B-LT B-LTA; do
+    NAME="AH-cli-signhash-pades-${LVL}-invisible"
+    echo ""
+    echo "--- $NAME ---"
+    ARGS=(sign --server-url "$BASE" -u testuser -p testpass \
+          --input "$SAMPLE" --output "$OUTDIR/${NAME}.pdf" \
+          --format pades --level "$LVL" --use-sign-hash)
+    if [ "$LVL" != "B-B" ]; then ARGS+=(--tsa-url "$TSA"); fi
 
-# AH2: signHash — PAdES visible (with image)
-NAME="AH-cli-signhash-pades-visible"
+    if RUST_LOG=warn "$BIN" "${ARGS[@]}" >/dev/null 2>&1 && [ -f "$OUTDIR/${NAME}.pdf" ]; then
+        SIZE=$(wc -c < "$OUTDIR/${NAME}.pdf" | tr -d ' ')
+        ok "$NAME ($SIZE bytes)"
+    else
+        fail "$NAME (sign failed)"
+    fi
+done
+
+# AH2: PAdES B-T visible
+NAME="AH-cli-signhash-pades-BT-visible"
 echo ""
 echo "--- $NAME ---"
 if RUST_LOG=warn "$BIN" sign --server-url "$BASE" -u testuser -p testpass \
     --input "$SAMPLE" --output "$OUTDIR/${NAME}.pdf" \
-    --format pades --level B-B --use-sign-hash \
+    --format pades --level B-T --tsa-url "$TSA" --use-sign-hash \
     --image "$IMAGE" --sig-rect "50,600,250,700" --sig-page 1 >/dev/null 2>&1 && [ -f "$OUTDIR/${NAME}.pdf" ]; then
     SIZE=$(wc -c < "$OUTDIR/${NAME}.pdf" | tr -d ' ')
     ok "$NAME ($SIZE bytes)"
@@ -234,7 +239,7 @@ else
     fail "$NAME (sign failed)"
 fi
 
-# AH3: signHash — PKCS7 invisible
+# AH3: PKCS7 invisible
 NAME="AH-cli-signhash-pkcs7-invisible"
 echo ""
 echo "--- $NAME ---"
@@ -247,13 +252,92 @@ else
     fail "$NAME (sign failed)"
 fi
 
-# AH4: signHash — PKCS7 visible
+# AH4: PKCS7 visible
 NAME="AH-cli-signhash-pkcs7-visible"
 echo ""
 echo "--- $NAME ---"
 if RUST_LOG=warn "$BIN" sign --server-url "$BASE" -u testuser -p testpass \
     --input "$SAMPLE" --output "$OUTDIR/${NAME}.pdf" \
     --format pkcs7 --use-sign-hash \
+    --image "$IMAGE" --sig-rect "50,600,250,700" --sig-page 1 >/dev/null 2>&1 && [ -f "$OUTDIR/${NAME}.pdf" ]; then
+    SIZE=$(wc -c < "$OUTDIR/${NAME}.pdf" | tr -d ' ')
+    ok "$NAME ($SIZE bytes)"
+else
+    fail "$NAME (sign failed)"
+fi
+
+# AH5: PKCS7 + TSA (invisible)
+NAME="AH-cli-signhash-pkcs7-tsa"
+echo ""
+echo "--- $NAME ---"
+if RUST_LOG=warn "$BIN" sign --server-url "$BASE" -u testuser -p testpass \
+    --input "$SAMPLE" --output "$OUTDIR/${NAME}.pdf" \
+    --format pkcs7 --tsa-url "$TSA" --use-sign-hash >/dev/null 2>&1 && [ -f "$OUTDIR/${NAME}.pdf" ]; then
+    SIZE=$(wc -c < "$OUTDIR/${NAME}.pdf" | tr -d ' ')
+    ok "$NAME ($SIZE bytes)"
+else
+    fail "$NAME (sign failed)"
+fi
+
+# AH6: PKCS7 LTV — CRL only (invisible)
+NAME="AH-cli-signhash-pkcs7-crl-only"
+echo ""
+echo "--- $NAME ---"
+if RUST_LOG=warn "$BIN" sign --server-url "$BASE" -u testuser -p testpass \
+    --input "$SAMPLE" --output "$OUTDIR/${NAME}.pdf" \
+    --format pkcs7 --include-crl --use-sign-hash >/dev/null 2>&1 && [ -f "$OUTDIR/${NAME}.pdf" ]; then
+    SIZE=$(wc -c < "$OUTDIR/${NAME}.pdf" | tr -d ' ')
+    ok "$NAME ($SIZE bytes)"
+else
+    fail "$NAME (sign failed)"
+fi
+
+# AH7: PKCS7 LTV — OCSP only (invisible)
+NAME="AH-cli-signhash-pkcs7-ocsp-only"
+echo ""
+echo "--- $NAME ---"
+if RUST_LOG=warn "$BIN" sign --server-url "$BASE" -u testuser -p testpass \
+    --input "$SAMPLE" --output "$OUTDIR/${NAME}.pdf" \
+    --format pkcs7 --include-ocsp --use-sign-hash >/dev/null 2>&1 && [ -f "$OUTDIR/${NAME}.pdf" ]; then
+    SIZE=$(wc -c < "$OUTDIR/${NAME}.pdf" | tr -d ' ')
+    ok "$NAME ($SIZE bytes)"
+else
+    fail "$NAME (sign failed)"
+fi
+
+# AH8: PKCS7 LTV — CRL + OCSP (invisible)
+NAME="AH-cli-signhash-pkcs7-crl-ocsp"
+echo ""
+echo "--- $NAME ---"
+if RUST_LOG=warn "$BIN" sign --server-url "$BASE" -u testuser -p testpass \
+    --input "$SAMPLE" --output "$OUTDIR/${NAME}.pdf" \
+    --format pkcs7 --include-crl --include-ocsp --use-sign-hash >/dev/null 2>&1 && [ -f "$OUTDIR/${NAME}.pdf" ]; then
+    SIZE=$(wc -c < "$OUTDIR/${NAME}.pdf" | tr -d ' ')
+    ok "$NAME ($SIZE bytes)"
+else
+    fail "$NAME (sign failed)"
+fi
+
+# AH9: PKCS7 LTV — CRL + OCSP + TSA (invisible)
+NAME="AH-cli-signhash-pkcs7-crl-ocsp-tsa"
+echo ""
+echo "--- $NAME ---"
+if RUST_LOG=warn "$BIN" sign --server-url "$BASE" -u testuser -p testpass \
+    --input "$SAMPLE" --output "$OUTDIR/${NAME}.pdf" \
+    --format pkcs7 --include-crl --include-ocsp --tsa-url "$TSA" --use-sign-hash >/dev/null 2>&1 && [ -f "$OUTDIR/${NAME}.pdf" ]; then
+    SIZE=$(wc -c < "$OUTDIR/${NAME}.pdf" | tr -d ' ')
+    ok "$NAME ($SIZE bytes)"
+else
+    fail "$NAME (sign failed)"
+fi
+
+# AH10: PKCS7 LTV full — CRL + OCSP + TSA + visible
+NAME="AH-cli-signhash-pkcs7-ltv-full-visible"
+echo ""
+echo "--- $NAME ---"
+if RUST_LOG=warn "$BIN" sign --server-url "$BASE" -u testuser -p testpass \
+    --input "$SAMPLE" --output "$OUTDIR/${NAME}.pdf" \
+    --format pkcs7 --include-crl --include-ocsp --tsa-url "$TSA" --use-sign-hash \
     --image "$IMAGE" --sig-rect "50,600,250,700" --sig-page 1 >/dev/null 2>&1 && [ -f "$OUTDIR/${NAME}.pdf" ]; then
     SIZE=$(wc -c < "$OUTDIR/${NAME}.pdf" | tr -d ' ')
     ok "$NAME ($SIZE bytes)"
@@ -528,7 +612,7 @@ printf "║  Passed: %-4d                                                ║\n" 
 printf "║  Failed: %-4d                                                ║\n" $FAIL
 echo "╠═══════════════════════════════════════════════════════════════╣"
 echo "║  A:  Client CLI sign (PAdES B-B/T/LT/LTA + PKCS7 inv/vis)  ║"
-echo "║  AH: Client CLI signHash (hash-only, bandwidth-efficient)   ║"
+echo "║  AH: Client CLI signHash (all variants: PAdES/PKCS7/LTV)   ║"
 echo "║  B:  Server signPdf/form (PAdES 4×inv + 4×vis + PKCS7 ×4)  ║"
 echo "║  C:  CSC signDoc/form (PAdES B-B/B-T + PKCS7 ×2)           ║"
 echo "║  D:  Server validate/form (all signed PDFs)                  ║"

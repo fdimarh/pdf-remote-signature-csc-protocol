@@ -119,11 +119,22 @@ pub async fn sign_pdf(
     let cms_der = if sign_options.use_sign_hash {
         // signHash: only send the 32-byte hash — bandwidth-efficient
         log::info!(
-            "Requesting remote signature via signHash (hash-only, {} bytes over wire)",
+            "Requesting remote signature via signHash (hash-only, {} bytes over wire, format={}, level={}, tsa={:?})",
             prepared.hash.len(),
+            sign_options.signature_format,
+            sign_options.pades_level,
+            sign_options.timestamp_url,
         );
         let sign_response = client
-            .sign_hash(credential_id, &prepared.hash)
+            .sign_hash(
+                credential_id,
+                &prepared.hash,
+                &sign_options.signature_format,
+                &sign_options.pades_level,
+                sign_options.timestamp_url.as_deref(),
+                sign_options.include_crl,
+                sign_options.include_ocsp,
+            )
             .await?;
 
         if sign_response.signatures.is_empty() {
@@ -174,13 +185,55 @@ pub async fn sign_pdf(
 
     // ── Step 7: Embed signature into PDF ──
     log::info!("Embedding signature into PDF...");
-    let signed_pdf = pdf_finalizer::embed_signature(
+    let mut signed_pdf = pdf_finalizer::embed_signature(
         &prepared.pdf_bytes,
         &cms_der,
         prepared.signature_size,
     )?;
 
-    // ── Step 8: Save ──
+    // ── Step 8: Post-signing DSS + Document Timestamp (PAdES B-LT / B-LTA) ──
+    let is_pades = sign_options.signature_format == "pades";
+    let pades_upper = sign_options.pades_level.to_uppercase();
+    let needs_dss = is_pades && matches!(pades_upper.as_str(), "B-LT" | "B-LTA");
+    let needs_doc_ts = is_pades && pades_upper == "B-LTA";
+
+    if needs_dss {
+        log::info!("Appending DSS dictionary for PAdES {} ...", pades_upper);
+
+        // Build certificate chain from the credential info
+        let cert_chain = build_cert_chain_from_b64(&cred_info.cert.certificates)?;
+
+        let pdf_for_dss = signed_pdf.clone();
+        signed_pdf = tokio::task::spawn_blocking(move || {
+            crate::server::ltv::append_dss_dictionary(pdf_for_dss, cert_chain)
+        })
+        .await
+        .context("DSS task panicked")?
+        .map_err(|e| anyhow::anyhow!("Failed to append DSS dictionary: {}", e))?;
+
+        log::info!("DSS dictionary appended: {} bytes", signed_pdf.len());
+    }
+
+    if needs_doc_ts {
+        if let Some(ref tsa_url) = sign_options.timestamp_url {
+            log::info!("Appending document-level timestamp for PAdES B-LTA ...");
+
+            let pdf_for_ts = signed_pdf.clone();
+            let tsa = tsa_url.clone();
+            signed_pdf = tokio::task::spawn_blocking(move || {
+                crate::server::ltv::append_document_timestamp(pdf_for_ts, &tsa, 30_000)
+            })
+            .await
+            .context("Document timestamp task panicked")?
+            .map_err(|e| anyhow::anyhow!("Failed to append document timestamp: {}", e))?;
+
+            log::info!("Document timestamp appended: {} bytes", signed_pdf.len());
+        } else {
+            log::warn!("B-LTA requested but no TSA URL provided — skipping document timestamp");
+        }
+    }
+
+    // ── Step 9: Save ──
     pdf_finalizer::save_signed_pdf(&signed_pdf, output_path)?;
 
     log::info!("✅ PDF signed successfully!");
@@ -195,3 +248,23 @@ pub async fn sign_pdf(
 
     Ok(())
 }
+
+/// Parse Base64 DER certificates from the CSC credential info into
+/// `CapturedX509Certificate` objects suitable for DSS / LTV operations.
+fn build_cert_chain_from_b64(
+    certs_b64: &[String],
+) -> anyhow::Result<Vec<x509_certificate::CapturedX509Certificate>> {
+    use base64::Engine;
+    let b64 = base64::engine::general_purpose::STANDARD;
+    let mut chain = Vec::with_capacity(certs_b64.len());
+    for (i, cert_b64) in certs_b64.iter().enumerate() {
+        let der = b64
+            .decode(cert_b64)
+            .with_context(|| format!("Invalid Base64 in certificate #{}", i))?;
+        let cert = x509_certificate::CapturedX509Certificate::from_der(der)
+            .map_err(|e| anyhow::anyhow!("Failed to parse certificate #{}: {}", i, e))?;
+        chain.push(cert);
+    }
+    Ok(chain)
+}
+

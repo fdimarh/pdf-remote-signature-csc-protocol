@@ -90,8 +90,17 @@ pub async fn sign_hash_handler(
         // Build CMS with the hash directly as messageDigest (no double-hashing)
         let pki_clone = pki.clone();
         let hash = hash_bytes.clone();
+        let cms_opts = CmsSigningOptions {
+            signature_format: body.signature_format.to_lowercase(),
+            pades_level: body.pades_level.to_uppercase()
+                .replace("BB", "B-B").replace("BT", "B-T")
+                .replace("BLT", "B-LT").replace("BLTA", "B-LTA"),
+            timestamp_url: body.timestamp_url.clone(),
+            include_crl: body.include_crl,
+            include_ocsp: body.include_ocsp,
+        };
         match tokio::task::spawn_blocking(move || {
-            build_cms_from_hash(&pki_clone, &hash)
+            build_cms_from_hash(&pki_clone, &hash, &cms_opts)
         }).await {
             Ok(Ok(cms_der)) => signatures.push(b64.encode(&cms_der)),
             Ok(Err(e)) => {
@@ -265,12 +274,17 @@ pub(crate) struct CmsSigningOptions {
 /// the received 32-byte SHA-256 hash is used **directly** as the
 /// `messageDigest` signed attribute (no double-hashing).
 ///
+/// Supports all signing variants via `CmsSigningOptions`:
+/// - TSA timestamp (via unsigned `timeStampToken` attribute)
+/// - CRL/OCSP revocation data (via `adbe-revocationInfoArchival` signed attribute)
+///
 /// The CMS SignedData structure is built manually because the
 /// `cryptographic-message-syntax` library always re-hashes content
 /// passed via `content_external()`.
 fn build_cms_from_hash(
     pki: &crate::server::pki::PkiState,
     hash: &[u8], // 32-byte SHA-256 hash of the original byte-range content
+    options: &CmsSigningOptions,
 ) -> Result<Vec<u8>, String> {
     use signature::Signer;
 
@@ -288,9 +302,28 @@ fn build_cms_from_hash(
         ca_certs.push(ca_cert);
     }
 
+    // Full certificate chain for revocation data fetching
+    let mut full_chain = vec![user_cert.clone()];
+    full_chain.extend(ca_certs.iter().cloned());
+
     // Extract issuer and serial number from user cert for SignerIdentifier
     let issuer_der = user_cert.issuer_name().encode_ref().to_captured(Der);
     let serial_der = user_cert.serial_number_asn1().encode_ref().to_captured(Der);
+
+    // ── Determine what to include based on format and level ──
+    let is_pades = options.signature_format == "pades";
+    let (include_cms_revocation, include_timestamp) = if is_pades {
+        match options.pades_level.as_str() {
+            "B-B" => (false, false),
+            "B-T" => (options.include_crl || options.include_ocsp, true),
+            "B-LT" | "B-LTA" => (true, true),
+            _ => (false, false),
+        }
+    } else {
+        // PKCS7
+        let wants_revocation = options.include_crl || options.include_ocsp;
+        (wants_revocation, options.timestamp_url.is_some())
+    };
 
     // ── Build signed attributes ──
     // 1. content-type attribute (OID 1.2.840.113549.1.9.3) = id-data (1.2.840.113549.1.7.1)
@@ -332,6 +365,39 @@ fn build_cms_from_hash(
         signing_time_attr,
         signing_cert_v2_attr,
     ];
+
+    // 5. adbe-revocationInfoArchival (CRL/OCSP in CMS signed attributes)
+    if include_cms_revocation {
+        let crl_flag = if is_pades {
+            matches!(options.pades_level.as_str(), "B-LT" | "B-LTA") || options.include_crl
+        } else {
+            true
+        };
+        let ocsp_flag = if is_pades {
+            matches!(options.pades_level.as_str(), "B-LT" | "B-LTA") || options.include_ocsp
+        } else {
+            true
+        };
+
+        log::info!(
+            "signHash: fetching revocation data: crl={}, ocsp={} for {} cert(s)",
+            crl_flag, ocsp_flag, full_chain.len()
+        );
+
+        // Use the LTV module to build the attribute, then DER-encode it manually
+        // for inclusion in our hand-built CMS
+        let (crl_data, ocsp_data) =
+            crate::server::ltv::fetch_revocation_data(&full_chain, crl_flag, ocsp_flag);
+
+        if !crl_data.is_empty() || !ocsp_data.is_empty() {
+            let revocation_attr = build_adbe_revocation_attr_der(&crl_data, &ocsp_data);
+            log::info!("signHash: added adbe-revocationInfoArchival ({} bytes)", revocation_attr.len());
+            attrs.push(revocation_attr);
+        } else {
+            log::warn!("signHash: no revocation data could be fetched");
+        }
+    }
+
     attrs.sort();
 
     // Build SET OF signed attributes
@@ -348,6 +414,43 @@ fn build_cms_from_hash(
         .try_sign(&signed_attrs_for_sig)
         .map_err(|e| format!("RSA signing failed: {}", e))?;
     let signature_bytes: Vec<u8> = sig.into();
+
+    // ── Build unsigned attributes (TSA timestamp) ──
+    let unsigned_attrs_content = if include_timestamp {
+        if let Some(tsa_url) = &options.timestamp_url {
+            // Hash the signature value for the timestamp
+            let sig_hash = {
+                let mut hasher = Sha256::new();
+                hasher.update(&signature_bytes);
+                hasher.finalize().to_vec()
+            };
+
+            log::info!("signHash: fetching timestamp from {}", tsa_url);
+            match crate::server::ltv::fetch_timestamp_token(tsa_url, &sig_hash) {
+                Ok(ts_token) => {
+                    log::info!("signHash: got timestamp token: {} bytes", ts_token.len());
+                    // Build timeStampToken unsigned attribute
+                    // OID 1.2.840.113549.1.9.16.2.14 (id-smime-aa-timeStampToken)
+                    let ts_attr = der_attribute(
+                        &[0x06, 0x0b, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x09, 0x10, 0x02, 0x0e],
+                        &der_set_of(&[&ts_token]),
+                    );
+                    let mut content = Vec::new();
+                    content.extend_from_slice(&ts_attr);
+                    Some(content)
+                }
+                Err(e) => {
+                    log::warn!("signHash: TSA timestamp failed: {}", e);
+                    None
+                }
+            }
+        } else {
+            log::warn!("signHash: timestamp requested but no TSA URL provided");
+            None
+        }
+    } else {
+        None
+    };
 
     // ── Build SignerInfo ──
     let signer_info = {
@@ -381,6 +484,11 @@ fn build_cms_from_hash(
 
         // signature = OCTET STRING
         si.extend_from_slice(&der_octet_string(&signature_bytes));
+
+        // unsignedAttrs [1] IMPLICIT (optional — contains timestamp)
+        if let Some(ref ua_content) = unsigned_attrs_content {
+            si.extend_from_slice(&der_tlv(0xa1, ua_content));
+        }
 
         der_sequence(&si)
     };
@@ -429,8 +537,63 @@ fn build_cms_from_hash(
         der_sequence_raw(&[&ci])
     };
 
-    log::info!("Built CMS from hash: {} bytes (manual DER construction)", content_info.len());
+    log::info!(
+        "Built CMS from hash: {} bytes (format={}, level={}, ts={}, rev={})",
+        content_info.len(),
+        options.signature_format,
+        options.pades_level,
+        include_timestamp,
+        include_cms_revocation,
+    );
     Ok(content_info)
+}
+
+/// Build the adbe-revocationInfoArchival DER attribute for manual CMS construction.
+///
+/// OID: 1.2.840.113583.1.1.8
+/// Encodes CRL and OCSP data into the RevocationInfoArchival ASN.1 structure,
+/// then wraps it as a DER SEQUENCE { OID, SET { value } } attribute.
+fn build_adbe_revocation_attr_der(crl_data: &[Vec<u8>], ocsp_data: &[Vec<u8>]) -> Vec<u8> {
+    // Build RevocationInfoArchival SEQUENCE content
+    let mut rev_content = Vec::new();
+
+    // CRL data: [0] SEQUENCE OF CRL
+    if !crl_data.is_empty() {
+        let mut crls_content = Vec::new();
+        for crl in crl_data {
+            crls_content.extend_from_slice(crl); // Each CRL is already DER-encoded
+        }
+        let crls_seq = der_sequence(&crls_content);
+        rev_content.extend_from_slice(&der_tlv(0xa0, &crls_seq)); // [0] IMPLICIT
+    }
+
+    // OCSP data: [1] SEQUENCE OF OCSPResponse
+    if !ocsp_data.is_empty() {
+        let mut ocsps_content = Vec::new();
+        for ocsp in ocsp_data {
+            // Wrap each OCSP response as OCSPResponse { responseStatus, responseBytes }
+            let mut ocsp_resp = Vec::new();
+            // responseStatus ENUMERATED 0 (successful)
+            ocsp_resp.extend_from_slice(&[0x0a, 0x01, 0x00]);
+            // responseBytes [0] EXPLICIT SEQUENCE { OID, OCTET STRING }
+            let pkix_basic_oid = der_oid(&[0x2b, 0x06, 0x01, 0x05, 0x05, 0x07, 0x30, 0x01, 0x01]); // 1.3.6.1.5.5.7.48.1.1
+            let ocsp_octet = der_octet_string(ocsp);
+            let resp_bytes_seq = der_sequence(&[pkix_basic_oid, ocsp_octet].concat());
+            ocsp_resp.extend_from_slice(&der_tlv(0xa0, &resp_bytes_seq));
+            ocsps_content.extend_from_slice(&der_sequence(&ocsp_resp));
+        }
+        let ocsps_seq = der_sequence(&ocsps_content);
+        rev_content.extend_from_slice(&der_tlv(0xa1, &ocsps_seq)); // [1] IMPLICIT
+    }
+
+    let rev_archival = der_sequence(&rev_content);
+
+    // Wrap as attribute: SEQUENCE { OID, SET { value } }
+    // OID 1.2.840.113583.1.1.8 = adbe-revocationInfoArchival
+    der_attribute(
+        &[0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x2f, 0x01, 0x01, 0x08],
+        &der_set_of(&[&rev_archival]),
+    )
 }
 
 // ── DER encoding helpers for manual CMS construction ──

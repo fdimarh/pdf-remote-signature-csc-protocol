@@ -513,10 +513,12 @@ Get certificate chain and key info for a credential.
 ┌──────────────────────────────────────────────────────────────────┐
 │  signHash                                                        │
 │  Client: prepare PDF + compute hash → send 32 bytes              │
-│  Server: wrap hash in CMS → return CMS                           │
-│  Client: embed CMS into PDF                                      │
+│  Server: wrap hash in CMS (manual DER) → return CMS              │
+│  Client: embed CMS + DSS + doc-ts → output signed PDF            │
 │  Calls: auth + credentials + signHash = 4 round-trips            │
+│  TSA/LTV: ✅ All variants (B-B/B-T/B-LT/B-LTA, PKCS7 LTV)     │
 │  Visible image: client-side only                                 │
+│  Bandwidth: minimal (32 bytes over wire)                         │
 └──────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────┐
@@ -826,11 +828,33 @@ remote-signature-pdf/
     - **Section A**: Client CLI — PAdES B-B/B-T/B-LT/B-LTA + PKCS7 + PKCS7 LTV (12 tests)
     - **Section B**: Server signPdf/form — PAdES 4×inv + 4×vis + PKCS7 ×4 + PKCS7 LTV ×5 (17 tests)
     - **Section C**: CSC signDoc/form — PAdES + PKCS7 + PKCS7 LTV variants (8 tests)
-    - **Section D**: Server validation of all signed PDFs (29 tests)
-    - **Section E**: CLI offline verification of all signed PDFs (29 tests)
-    - **Total: 95 tests — all passing ✅**
+    - **Section D**: Server validation of all signed PDFs
+    - **Section E**: CLI offline verification of all signed PDFs
 
-### Phase 9: Future Enhancements (Optional)
+### Phase 9: signHash Full Variant Support ✅
+**Goal:** Extend signHash from simplified CMS to full signing variant support
+
+32. ✅ **SignHashRequest extended** with optional `signatureFormat`, `padesLevel`, `timestampUrl`, `includeCrl`, `includeOcsp` fields (backward-compatible defaults)
+33. ✅ **`build_cms_from_hash()` enhanced** — manual DER CMS construction now supports:
+    - TSA timestamps via `timeStampToken` unsigned attribute (OID 1.2.840.113549.1.9.16.2.14)
+    - CRL/OCSP revocation data via `adbe-revocationInfoArchival` signed attribute
+    - Same format/level/TSA/CRL/OCSP logic as `build_cms_with_options()`
+34. ✅ **Client `sign_hash()` updated** to forward all signing options to server
+35. ✅ **`--use-sign-hash` CLI flag** — bandwidth-efficient alternative to signDoc
+36. ✅ **Section AH test cases** — 13 signHash variants (PAdES all levels + PKCS7 + LTV)
+
+### Phase 10: Client-Side DSS & Document Timestamp Fix ✅
+**Goal:** Client-side PAdES B-LT/B-LTA must include post-CMS DSS and document timestamp
+
+37. ✅ **Client workflow extended** with post-CMS processing:
+    - Step 8a (B-LT, B-LTA): `append_dss_dictionary()` — CRL/OCSP/Certs incremental update
+    - Step 8b (B-LTA): `append_document_timestamp()` — RFC 3161 document-level timestamp
+    - Applies to both signDoc (Section A) and signHash (Section AH) flows
+38. ✅ **`build_cert_chain_from_b64()`** helper — parses CSC credential cert chain for LTV module
+39. ✅ **Verified output sizes**: B-LT ~61KB (with DSS), B-LTA ~91KB (with DSS + doc timestamp)
+    - **Total: 134 tests — all passing ✅**
+
+### Phase 11: Future Enhancements (Optional)
 - Multiple signers / serial signing
 - Credential authorization (SAD flow)
 - WebSocket for long-running signing operations
@@ -852,6 +876,8 @@ remote-signature-pdf/
 | TSA Integration | `spawn_blocking` | CMS lib uses sync HTTP; prevents tokio deadlock |
 | LTV Data | CMS signed attributes + DSS | adbe-revocationInfoArchival for CRL/OCSP in CMS |
 | Signature Placeholder | 50,000 hex chars | Accommodates CMS + CRL + OCSP revocation data |
+| signHash CMS | Manual DER construction | Library always double-hashes; manual build uses hash directly as messageDigest |
+| Client DSS/Timestamp | Post-CMS incremental update | Client appends DSS + doc-timestamp after embedding CMS for B-LT/B-LTA |
 | Form-Data | `actix-multipart` | Direct file upload, no Base64 encoding needed |
 
 ---

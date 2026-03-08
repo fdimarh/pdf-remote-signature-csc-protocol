@@ -250,6 +250,28 @@ components:
           type: string
           example: "1.2.840.113549.1.1.11"
           description: RSA-SHA256 OID
+        signatureFormat:
+          type: string
+          default: "pades"
+          enum: ["pkcs7", "pades"]
+          description: Signature format (optional, default "pades")
+        padesLevel:
+          type: string
+          default: "B-B"
+          enum: ["B-B", "B-T", "B-LT", "B-LTA"]
+          description: PAdES conformance level (optional, default "B-B")
+        timestampUrl:
+          type: string
+          nullable: true
+          description: TSA URL for timestamp (optional)
+        includeCrl:
+          type: boolean
+          default: false
+          description: Include CRL revocation data in CMS signed attributes
+        includeOcsp:
+          type: boolean
+          default: false
+          description: Include OCSP revocation data in CMS signed attributes
 
     SignHashResponse:
       type: object
@@ -618,12 +640,21 @@ paths:
   /csc/v2/signatures/signHash:
     post:
       tags: [signing]
-      summary: Sign a SHA-256 hash (standard CSC)
+      summary: Sign a SHA-256 hash (bandwidth-efficient)
       description: |
         Receives Base64-encoded SHA-256 hash(es) and returns CMS SignedData blob(s).
+        Only 32 bytes are sent over the wire, making this the most bandwidth-efficient option.
 
-        **Note**: This is a simplified implementation where the server wraps the hash as external content.
-        For correct PDF signatures, use `/csc/v2/signatures/signDoc` instead.
+        Supports all signing variants via optional parameters:
+        - `signatureFormat`: "pkcs7" or "pades" (default: "pades")
+        - `padesLevel`: "B-B", "B-T", "B-LT", "B-LTA" (default: "B-B")
+        - `timestampUrl`: TSA URL for timestamp (B-T/B-LT/B-LTA)
+        - `includeCrl` / `includeOcsp`: CRL/OCSP revocation data in CMS
+
+        The CMS is built using manual DER construction with the hash embedded directly
+        as the `messageDigest` signed attribute (no double-hashing).
+
+        **Note**: The client must perform post-CMS DSS/timestamp steps for B-LT/B-LTA.
       operationId: signHash
       security:
         - BearerAuth: []

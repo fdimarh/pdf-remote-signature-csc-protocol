@@ -128,6 +128,29 @@ pub struct SignHashRequest {
     /// OID of the signature algorithm (RSA-SHA256 = "1.2.840.113549.1.1.11")
     #[serde(rename = "signAlgo")]
     pub sign_algo: String,
+    /// Signature format: "pkcs7" or "pades" (default: "pades")
+    #[serde(rename = "signatureFormat", default = "default_sig_format_hash")]
+    pub signature_format: String,
+    /// PAdES conformance level: "B-B", "B-T", "B-LT", "B-LTA" (default: "B-B")
+    #[serde(rename = "padesLevel", default = "default_pades_level_hash")]
+    pub pades_level: String,
+    /// TSA URL for timestamp
+    #[serde(rename = "timestampUrl", skip_serializing_if = "Option::is_none", default)]
+    pub timestamp_url: Option<String>,
+    /// Include CRL in CMS signed attributes
+    #[serde(rename = "includeCrl", default)]
+    pub include_crl: bool,
+    /// Include OCSP in CMS signed attributes
+    #[serde(rename = "includeOcsp", default)]
+    pub include_ocsp: bool,
+}
+
+fn default_sig_format_hash() -> String {
+    "pades".to_string()
+}
+
+fn default_pades_level_hash() -> String {
+    "B-B".to_string()
 }
 
 /// Response for `POST /csc/v2/signatures/signHash`

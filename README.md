@@ -9,6 +9,7 @@ The **server** acts as a PKI / Trust Service Provider (TSP) managing X.509 certi
 ## Features
 
 - **CSC v2 Protocol** — Standards-based remote signing with `signHash` and `signDoc` endpoints
+- **signHash Bandwidth Efficiency** — `--use-sign-hash` flag sends only 32-byte SHA-256 hash (vs full byte-range content), supports all signing variants including TSA/LTV
 - **Full Server-Side Signing** — Upload a PDF + optional image, get back a fully signed PDF in one call (`signPdf`)
 - **Multiple Signature Formats** — PKCS#7 (`adbe.pkcs7.detached`) and PAdES (`ETSI.CAdES.detached`)
 - **PAdES Conformance Levels** — B-B, B-T (timestamped), B-LT (long-term with DSS), B-LTA (archival with doc timestamp)
@@ -21,7 +22,7 @@ The **server** acts as a PKI / Trust Service Provider (TSP) managing X.509 certi
 - **Form-Data Upload** — All signing/validation endpoints support `multipart/form-data` with binary PDF response
 - **OpenAPI 3.0 Spec** — Machine-readable API spec at `docs/openapi.yaml`
 - **Postman Collection** — Ready-to-use collection at `docs/postman_collection.json`
-- **95 Automated Tests** — Comprehensive test suite covering all signing variants, validation, and verification
+- **134 Automated Tests** — Comprehensive test suite covering all signing variants (signDoc + signHash), validation, and verification
 
 ---
 
@@ -123,6 +124,22 @@ cargo run -- sign \
   --format pkcs7 \
   --include-crl --include-ocsp \
   --tsa-url http://timestamp.digicert.com
+
+# Bandwidth-efficient: signHash (only 32-byte hash sent over wire)
+cargo run -- sign \
+  --server-url http://localhost:8080 \
+  --input test-files/sample.pdf \
+  --output signed-hash.pdf \
+  --use-sign-hash
+
+# signHash with PAdES B-LTA (full TSA + DSS + document timestamp)
+cargo run -- sign \
+  --server-url http://localhost:8080 \
+  --input test-files/sample.pdf \
+  --output signed-hash-blta.pdf \
+  --level B-LTA \
+  --tsa-url http://timestamp.digicert.com \
+  --use-sign-hash
 ```
 
 **Server-side signing** (server handles everything in one call):
@@ -165,11 +182,14 @@ cargo run -- validate \
 | **Client sends** | 32-byte hash | Byte-range content | Full PDF + optional image |
 | **Server returns** | CMS blob | CMS blob | Fully signed PDF |
 | **PDF prep** | Client | Client | Server |
-| **CMS building** | Server (simplified) | Server (correct) | Server (correct) |
+| **CMS building** | Server (manual DER) | Server (via library) | Server (via library) |
 | **Embedding** | Client | Client | Server |
+| **DSS / Doc-TS** | Client (post-embed) | Client (post-embed) | Server |
 | **Visible image** | Client-side only | Client-side only | Server-side rendering ✅ |
+| **TSA / LTV** | ✅ All variants | ✅ All variants | ✅ All variants |
 | **Round-trips** | 4 | 4 | 3 |
-| **Best for** | CSC compliance | Production signing | Simplest integration |
+| **Bandwidth** | Minimal (32 bytes) | Full content | Full PDF |
+| **Best for** | Low-bandwidth links | Production signing | Simplest integration |
 
 ---
 
@@ -412,8 +432,8 @@ remote-signature-pdf/
 └── test-files/
     ├── sample.pdf                      # Test input PDF
     ├── signature-image.png             # Test signature image
-    ├── test_all_signing.sh             # Comprehensive test suite (95 tests) ⭐
-    └── all-signing-test-report.txt     # Test report (95/95 passed)
+    ├── test_all_signing.sh             # Comprehensive test suite (134 tests) ⭐
+    └── all-signing-test-report.txt     # Test report (134/134 passed)
 ```
 
 ---
@@ -457,6 +477,7 @@ Options:
   --sig-rect <RECT>     "x1,y1,x2,y2" in PDF points [default: 50,50,250,150]
   --include-crl         Include CRL revocation data in CMS (PKCS7 LTV)
   --include-ocsp        Include OCSP revocation data in CMS (PKCS7 LTV)
+  --use-sign-hash       Use signHash instead of signDoc (bandwidth-efficient)
 ```
 
 ### `sign-remote`

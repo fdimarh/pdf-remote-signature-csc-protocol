@@ -221,6 +221,11 @@ impl CscClient {
         &self,
         credential_id: &str,
         hash: &[u8],
+        signature_format: &str,
+        pades_level: &str,
+        timestamp_url: Option<&str>,
+        include_crl: bool,
+        include_ocsp: bool,
     ) -> Result<SignHashResponse> {
         let token = self.get_token()?;
         let url = format!("{}/csc/v2/signatures/signHash", self.base_url);
@@ -232,6 +237,11 @@ impl CscClient {
             hashes: vec![engine.encode(hash)],
             hash_algo: OID_SHA256.to_string(),
             sign_algo: OID_RSA_SHA256.to_string(),
+            signature_format: signature_format.to_string(),
+            pades_level: pades_level.to_string(),
+            timestamp_url: timestamp_url.map(|s| s.to_string()),
+            include_crl,
+            include_ocsp,
         };
 
         let resp = self
