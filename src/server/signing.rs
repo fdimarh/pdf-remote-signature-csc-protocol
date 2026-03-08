@@ -1,15 +1,15 @@
 //! `/csc/v2/signatures/signHash` and `/csc/v2/signatures/signDoc` endpoints.
 //!
-//! `signHash` — standard CSC: receives a hash, builds CMS (simplified).
+//! `signHash` — standard CSC: receives a pre-computed hash, builds a proper
+//!              CMS SignedData with the hash as messageDigest (manual DER).
 //! `signDoc`  — extension: receives raw content bytes, builds proper CMS
-//!              with correct messageDigest. This is the recommended endpoint
-//!              for this prototype since it produces valid PDF signatures.
+//!              with correct messageDigest via the `cryptographic-message-syntax` library.
 
 use actix_multipart::Multipart;
 use actix_web::{web, HttpRequest, HttpResponse};
 use base64::Engine;
 use bcder::Mode::Der;
-use bcder::{encode::Values, Captured, OctetString};
+use bcder::{encode::{PrimitiveContent, Values}, Captured, OctetString};
 use cryptographic_message_syntax::{Bytes, Oid, SignedDataBuilder, SignerBuilder};
 use sha2::{Digest, Sha256};
 use x509_certificate::rfc5652::AttributeValue;
@@ -25,9 +25,12 @@ use crate::server::auth::{validate_bearer_token, USERS};
 /// `POST /csc/v2/signatures/signHash`
 ///
 /// Standard CSC endpoint. Receives Base64-encoded SHA-256 hash(es).
-/// NOTE: For this prototype, the server uses `content_external` with
-/// the hash bytes, producing messageDigest = SHA256(hash). This is a
-/// simplification. Use `/csc/v2/signatures/signDoc` for correct CMS.
+/// The hash is used directly as the CMS `messageDigest` signed attribute,
+/// then the signed attributes are RSA-signed and packaged into a
+/// PKCS#7/CMS SignedData structure.
+///
+/// This produces a valid detached CMS signature suitable for embedding
+/// into a PDF whose byte-range content hashes to the provided value.
 pub async fn sign_hash_handler(
     req: HttpRequest,
     body: web::Json<SignHashRequest>,
@@ -84,11 +87,11 @@ pub async fn sign_hash_handler(
             }
         };
 
-        // Build CMS with hash as external content (simplified)
+        // Build CMS with the hash directly as messageDigest (no double-hashing)
         let pki_clone = pki.clone();
         let hash = hash_bytes.clone();
         match tokio::task::spawn_blocking(move || {
-            build_cms_from_content(&pki_clone, &hash)
+            build_cms_from_hash(&pki_clone, &hash)
         }).await {
             Ok(Ok(cms_der)) => signatures.push(b64.encode(&cms_der)),
             Ok(Err(e)) => {
@@ -256,25 +259,254 @@ pub(crate) struct CmsSigningOptions {
     pub(crate) include_ocsp: bool,
 }
 
-/// Build a CMS/PKCS#7 `SignedData` from raw content bytes.
+/// Build a CMS/PKCS#7 `SignedData` from a **pre-computed hash**.
 ///
-/// Uses `content_external()` which:
-/// 1. Computes SHA-256(content_bytes) → messageDigest signed attribute
-/// 2. DER-encodes the signed attributes
-/// 3. Signs the DER-encoded attributes with the private key
-/// 4. Packages everything into a PKCS#7 SignedData structure
-fn build_cms_from_content(
+/// This is the correct implementation for the CSC signHash endpoint:
+/// the received 32-byte SHA-256 hash is used **directly** as the
+/// `messageDigest` signed attribute (no double-hashing).
+///
+/// The CMS SignedData structure is built manually because the
+/// `cryptographic-message-syntax` library always re-hashes content
+/// passed via `content_external()`.
+fn build_cms_from_hash(
     pki: &crate::server::pki::PkiState,
-    content_bytes: &[u8],
+    hash: &[u8], // 32-byte SHA-256 hash of the original byte-range content
 ) -> Result<Vec<u8>, String> {
-    let opts = CmsSigningOptions {
-        signature_format: "pades".to_string(),
-        pades_level: "B-B".to_string(),
-        timestamp_url: None,
-        include_crl: false,
-        include_ocsp: false,
+    use signature::Signer;
+
+    let key_pair = InMemorySigningKeyPair::from_pkcs8_der(&pki.user_key_der)
+        .map_err(|e| format!("Failed to load signing key: {}", e))?;
+
+    let user_cert = CapturedX509Certificate::from_der(pki.user_cert_der.clone())
+        .map_err(|e| format!("Failed to parse user cert: {}", e))?;
+
+    // Parse CA chain certificates
+    let mut ca_certs = Vec::new();
+    for (i, ca_der) in pki.ca_chain_der.iter().enumerate() {
+        let ca_cert = CapturedX509Certificate::from_der(ca_der.clone())
+            .map_err(|e| format!("Failed to parse CA cert #{}: {}", i, e))?;
+        ca_certs.push(ca_cert);
+    }
+
+    // Extract issuer and serial number from user cert for SignerIdentifier
+    let issuer_der = user_cert.issuer_name().encode_ref().to_captured(Der);
+    let serial_der = user_cert.serial_number_asn1().encode_ref().to_captured(Der);
+
+    // ── Build signed attributes ──
+    // 1. content-type attribute (OID 1.2.840.113549.1.9.3) = id-data (1.2.840.113549.1.7.1)
+    let content_type_attr = der_attribute(
+        &[0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x09, 0x03], // OID 1.2.840.113549.1.9.3 (id-contentType)
+        &der_set_of(&[&der_oid(&[0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x07, 0x01])]), // value = id-data
+    );
+
+    // 2. messageDigest = the pre-computed hash (NOT hashed again)
+    let message_digest_attr = der_attribute(
+        &[0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x09, 0x04], // OID 1.2.840.113549.1.9.4
+        &der_set_of(&[&der_octet_string(hash)]),
+    );
+
+    // 3. signingTime
+    let now = chrono::Utc::now();
+    let time_str = now.format("%y%m%d%H%M%SZ").to_string();
+    let signing_time_attr = der_attribute(
+        &[0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x09, 0x05], // OID 1.2.840.113549.1.9.5
+        &der_set_of(&[&der_utc_time(&time_str)]),
+    );
+
+    // 4. ESS-signing-certificate-v2 (1.2.840.113549.1.9.16.2.47)
+    let cert_hash = {
+        let mut hasher = Sha256::new();
+        hasher.update(user_cert.encode_der().map_err(|e| format!("{}", e))?);
+        hasher.finalize().to_vec()
     };
-    build_cms_with_options(pki, content_bytes, &opts)
+    let ess_cert_id_v2 = der_sequence(&der_sequence(&der_sequence(&der_octet_string(&cert_hash))));
+    let signing_cert_v2_attr = der_attribute(
+        &[0x06, 0x0b, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x09, 0x10, 0x02, 0x2f], // OID 1.2.840.113549.1.9.16.2.47
+        &der_set_of(&[&ess_cert_id_v2]),
+    );
+
+    // Collect and sort attributes (DER SET must be sorted)
+    let mut attrs = vec![
+        content_type_attr,
+        message_digest_attr,
+        signing_time_attr,
+        signing_cert_v2_attr,
+    ];
+    attrs.sort();
+
+    // Build SET OF signed attributes
+    let mut attrs_content = Vec::new();
+    for attr in &attrs {
+        attrs_content.extend_from_slice(attr);
+    }
+
+    // For signing, the signed attributes are DER-encoded as a SET (tag 0x31)
+    let signed_attrs_for_sig = der_tlv(0x31, &attrs_content);
+
+    // Sign the DER-encoded signed attributes using the signature::Signer trait
+    let sig = key_pair
+        .try_sign(&signed_attrs_for_sig)
+        .map_err(|e| format!("RSA signing failed: {}", e))?;
+    let signature_bytes: Vec<u8> = sig.into();
+
+    // ── Build SignerInfo ──
+    let signer_info = {
+        let mut si = Vec::new();
+
+        // version = 1
+        si.extend_from_slice(&der_integer_small(1));
+
+        // sid = IssuerAndSerialNumber
+        let mut ias = Vec::new();
+        ias.extend_from_slice(issuer_der.as_slice());
+        ias.extend_from_slice(serial_der.as_slice());
+        si.extend_from_slice(&der_sequence(&ias));
+
+        // digestAlgorithm = SHA-256 (2.16.840.1.101.3.4.2.1)
+        let sha256_alg_id = der_sequence_raw(&[
+            &[0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01][..],
+            &[0x05, 0x00], // NULL parameters
+        ]);
+        si.extend_from_slice(&sha256_alg_id);
+
+        // signedAttrs [0] IMPLICIT
+        si.extend_from_slice(&der_tlv(0xa0, &attrs_content));
+
+        // signatureAlgorithm = RSA-SHA256 (1.2.840.113549.1.1.11)
+        let rsa_sha256_alg_id = der_sequence_raw(&[
+            &[0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0b][..],
+            &[0x05, 0x00],
+        ]);
+        si.extend_from_slice(&rsa_sha256_alg_id);
+
+        // signature = OCTET STRING
+        si.extend_from_slice(&der_octet_string(&signature_bytes));
+
+        der_sequence(&si)
+    };
+
+    // ── Build SignedData ──
+    let signed_data = {
+        let mut sd = Vec::new();
+
+        // version = 1
+        sd.extend_from_slice(&der_integer_small(1));
+
+        // digestAlgorithms SET OF AlgorithmIdentifier
+        let sha256_alg_id = der_sequence_raw(&[
+            &[0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01][..],
+            &[0x05, 0x00],
+        ]);
+        sd.extend_from_slice(&der_set_of(&[&sha256_alg_id]));
+
+        // encapContentInfo = SEQUENCE { contentType, [no content for detached] }
+        let ecinfo = der_sequence_raw(&[
+            &der_oid(&[0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x07, 0x01]),
+        ]);
+        sd.extend_from_slice(&ecinfo);
+
+        // certificates [0] IMPLICIT — include user cert + CA chain
+        let mut certs_content = Vec::new();
+        certs_content.extend_from_slice(&pki.user_cert_der);
+        for ca_der in &pki.ca_chain_der {
+            certs_content.extend_from_slice(ca_der);
+        }
+        sd.extend_from_slice(&der_tlv(0xa0, &certs_content));
+
+        // signerInfos SET OF
+        sd.extend_from_slice(&der_set_of(&[&signer_info]));
+
+        der_sequence_raw(&[&sd])
+    };
+
+    // ── Wrap in ContentInfo (OID = id-signedData) ──
+    let content_info = {
+        let mut ci = Vec::new();
+        // contentType = id-signedData (1.2.840.113549.1.7.2)
+        ci.extend_from_slice(&der_oid(&[0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x07, 0x02]));
+        // content [0] EXPLICIT
+        ci.extend_from_slice(&der_tlv(0xa0, &signed_data));
+        der_sequence_raw(&[&ci])
+    };
+
+    log::info!("Built CMS from hash: {} bytes (manual DER construction)", content_info.len());
+    Ok(content_info)
+}
+
+// ── DER encoding helpers for manual CMS construction ──
+
+fn der_push_length(buf: &mut Vec<u8>, len: usize) {
+    if len < 0x80 {
+        buf.push(len as u8);
+    } else if len < 0x100 {
+        buf.push(0x81);
+        buf.push(len as u8);
+    } else if len < 0x10000 {
+        buf.push(0x82);
+        buf.push((len >> 8) as u8);
+        buf.push(len as u8);
+    } else if len < 0x1000000 {
+        buf.push(0x83);
+        buf.push((len >> 16) as u8);
+        buf.push((len >> 8) as u8);
+        buf.push(len as u8);
+    } else {
+        buf.push(0x84);
+        buf.push((len >> 24) as u8);
+        buf.push((len >> 16) as u8);
+        buf.push((len >> 8) as u8);
+        buf.push(len as u8);
+    }
+}
+
+fn der_tlv(tag: u8, content: &[u8]) -> Vec<u8> {
+    let mut out = vec![tag];
+    der_push_length(&mut out, content.len());
+    out.extend_from_slice(content);
+    out
+}
+
+fn der_sequence(content: &[u8]) -> Vec<u8> {
+    der_tlv(0x30, content)
+}
+
+fn der_sequence_raw(parts: &[&[u8]]) -> Vec<u8> {
+    let mut content = Vec::new();
+    for part in parts {
+        content.extend_from_slice(part);
+    }
+    der_tlv(0x30, &content)
+}
+
+fn der_set_of(items: &[&[u8]]) -> Vec<u8> {
+    let mut content = Vec::new();
+    for item in items {
+        content.extend_from_slice(item);
+    }
+    der_tlv(0x31, &content)
+}
+
+fn der_oid(encoded_oid: &[u8]) -> Vec<u8> {
+    der_tlv(0x06, encoded_oid)
+}
+
+fn der_octet_string(data: &[u8]) -> Vec<u8> {
+    der_tlv(0x04, data)
+}
+
+fn der_utc_time(time_str: &str) -> Vec<u8> {
+    der_tlv(0x17, time_str.as_bytes())
+}
+
+fn der_integer_small(val: u8) -> Vec<u8> {
+    vec![0x02, 0x01, val]
+}
+
+fn der_attribute(oid_tlv: &[u8], value_set: &[u8]) -> Vec<u8> {
+    let mut content = Vec::new();
+    content.extend_from_slice(oid_tlv);
+    content.extend_from_slice(value_set);
+    der_sequence_raw(&[&content])
 }
 
 /// Build a CMS/PKCS#7 `SignedData` with configurable options.
