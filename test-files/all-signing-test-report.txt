@@ -1,93 +1,101 @@
-╔═══════════════════════════════════════════════════════════════╗
-║  Comprehensive Signing & Validation Retest                    ║
-║  2026-03-08 15:07:48                                          ║
-╚═══════════════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════════════════╗
+║  Comprehensive Signing & Validation Test Suite                       ║
+║  2026-03-08 15:40:12                                                   ║
+╠══════════════════════════════════════════════════════════════════════╣
+║  ⚠️  LOCAL PROTOTYPE — timings are indicative only                   ║
+║  Debug build · loopback network · Nowina test PKI                    ║
+║  TSA calls to timestamp.digicert.com add network latency             ║
+╚══════════════════════════════════════════════════════════════════════╝
 
-Server PID=15120, Port=9100
-Output:  /tmp/signing-retest-1772957268
+Server PID=35627, Port=9100
+Output:  /tmp/signing-retest-1772959212
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SECTION A: Client-Side Signing (CLI → CSC signDoc → local embed)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 --- A-cli-pades-B-B-invisible ---
-  ✅ A-cli-pades-B-B-invisible (51341 bytes)
+  ✅ A-cli-pades-B-B-invisible (51340 bytes)  [214ms]
 
 --- A-cli-pades-B-T-invisible ---
-  ✅ A-cli-pades-B-T-invisible (51341 bytes)
+  ✅ A-cli-pades-B-T-invisible (51340 bytes)  [962ms]
 
 --- A-cli-pades-B-LT-invisible ---
-  ✅ A-cli-pades-B-LT-invisible (61211 bytes)
+  ✅ A-cli-pades-B-LT-invisible (61211 bytes)  [3.996s]
 
 --- A-cli-pades-B-LTA-invisible ---
-  ✅ A-cli-pades-B-LTA-invisible (91888 bytes)
+  ✅ A-cli-pades-B-LTA-invisible (91888 bytes)  [4.760s]
 
 --- A-cli-pades-BT-visible ---
-  ✅ A-cli-pades-BT-visible (52231 bytes)
+  ✅ A-cli-pades-BT-visible (52231 bytes)  [865ms]
 
 --- A-cli-pkcs7-invisible ---
-  ✅ A-cli-pkcs7-invisible (51341 bytes)
+  ✅ A-cli-pkcs7-invisible (51341 bytes)  [215ms]
 
 --- A-cli-pkcs7-visible ---
-  ✅ A-cli-pkcs7-visible (52230 bytes)
+  ✅ A-cli-pkcs7-visible (52230 bytes)  [207ms]
 
 --- A-cli-pkcs7-crl-only ---
-  ✅ A-cli-pkcs7-crl-only (51341 bytes)
+  ✅ A-cli-pkcs7-crl-only (51340 bytes)  [1.780s]
 
 --- A-cli-pkcs7-ocsp-only ---
-  ✅ A-cli-pkcs7-ocsp-only (51341 bytes)
+  ✅ A-cli-pkcs7-ocsp-only (51341 bytes)  [1.614s]
 
 --- A-cli-pkcs7-crl-ocsp ---
-  ✅ A-cli-pkcs7-crl-ocsp (51340 bytes)
+  ✅ A-cli-pkcs7-crl-ocsp (51341 bytes)  [1.671s]
 
 --- A-cli-pkcs7-crl-ocsp-tsa ---
-  ✅ A-cli-pkcs7-crl-ocsp-tsa (51340 bytes)
+  ✅ A-cli-pkcs7-crl-ocsp-tsa (51341 bytes)  [2.166s]
 
 --- A-cli-pkcs7-ltv-full-visible ---
-  ✅ A-cli-pkcs7-ltv-full-visible (52231 bytes)
+  ✅ A-cli-pkcs7-ltv-full-visible (52231 bytes)  [2.230s]
+
+  ⏱  Section A total: 22.117s
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-SECTION A-HASH: Client-Side signHash (hash-only, all variants)
+SECTION AH: Client-Side signHash (hash-only, all variants)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 --- AH-cli-signhash-pades-B-B-invisible ---
-  ✅ AH-cli-signhash-pades-B-B-invisible (51341 bytes)
+  ✅ AH-cli-signhash-pades-B-B-invisible (51341 bytes)  [325ms]
 
 --- AH-cli-signhash-pades-B-T-invisible ---
-  ✅ AH-cli-signhash-pades-B-T-invisible (51341 bytes)
+  ✅ AH-cli-signhash-pades-B-T-invisible (51341 bytes)  [1.002s]
 
 --- AH-cli-signhash-pades-B-LT-invisible ---
-  ✅ AH-cli-signhash-pades-B-LT-invisible (61211 bytes)
+  ✅ AH-cli-signhash-pades-B-LT-invisible (61211 bytes)  [4.019s]
 
 --- AH-cli-signhash-pades-B-LTA-invisible ---
-  ✅ AH-cli-signhash-pades-B-LTA-invisible (91887 bytes)
+  ✅ AH-cli-signhash-pades-B-LTA-invisible (91889 bytes)  [4.592s]
 
 --- AH-cli-signhash-pades-BT-visible ---
-  ✅ AH-cli-signhash-pades-BT-visible (52231 bytes)
+  ✅ AH-cli-signhash-pades-BT-visible (52231 bytes)  [675ms]
 
 --- AH-cli-signhash-pkcs7-invisible ---
-  ✅ AH-cli-signhash-pkcs7-invisible (51341 bytes)
+  ✅ AH-cli-signhash-pkcs7-invisible (51341 bytes)  [196ms]
 
 --- AH-cli-signhash-pkcs7-visible ---
-  ✅ AH-cli-signhash-pkcs7-visible (52230 bytes)
+  ✅ AH-cli-signhash-pkcs7-visible (52231 bytes)  [193ms]
 
 --- AH-cli-signhash-pkcs7-tsa ---
-  ✅ AH-cli-signhash-pkcs7-tsa (51341 bytes)
+  ✅ AH-cli-signhash-pkcs7-tsa (51341 bytes)  [676ms]
 
 --- AH-cli-signhash-pkcs7-crl-only ---
-  ✅ AH-cli-signhash-pkcs7-crl-only (51341 bytes)
+  ✅ AH-cli-signhash-pkcs7-crl-only (51341 bytes)  [1.592s]
 
 --- AH-cli-signhash-pkcs7-ocsp-only ---
-  ✅ AH-cli-signhash-pkcs7-ocsp-only (51341 bytes)
+  ✅ AH-cli-signhash-pkcs7-ocsp-only (51341 bytes)  [1.707s]
 
 --- AH-cli-signhash-pkcs7-crl-ocsp ---
-  ✅ AH-cli-signhash-pkcs7-crl-ocsp (51340 bytes)
+  ✅ AH-cli-signhash-pkcs7-crl-ocsp (51340 bytes)  [1.679s]
 
 --- AH-cli-signhash-pkcs7-crl-ocsp-tsa ---
-  ✅ AH-cli-signhash-pkcs7-crl-ocsp-tsa (51341 bytes)
+  ✅ AH-cli-signhash-pkcs7-crl-ocsp-tsa (51341 bytes)  [2.128s]
 
 --- AH-cli-signhash-pkcs7-ltv-full-visible ---
-  ✅ AH-cli-signhash-pkcs7-ltv-full-visible (52231 bytes)
+  ✅ AH-cli-signhash-pkcs7-ltv-full-visible (52231 bytes)  [2.156s]
+
+  ⏱  Section AH total: 22.778s
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SECTION B: Server-Side Signing (POST /api/v1/signPdf/form)
@@ -95,71 +103,73 @@ SECTION B: Server-Side Signing (POST /api/v1/signPdf/form)
 
 --- B-server-pades-B-B-invisible ---
   HTTP=200, Size=51298
-  ✅ B-server-pades-B-B-invisible (51298 bytes)
+  ✅ B-server-pades-B-B-invisible (51298 bytes)  [173ms]
 
 --- B-server-pades-B-T-invisible ---
   HTTP=200, Size=51298
-  ✅ B-server-pades-B-T-invisible (51298 bytes)
+  ✅ B-server-pades-B-T-invisible (51298 bytes)  [651ms]
 
 --- B-server-pades-B-LT-invisible ---
   HTTP=200, Size=61168
-  ✅ B-server-pades-B-LT-invisible (61168 bytes)
+  ✅ B-server-pades-B-LT-invisible (61168 bytes)  [3.793s]
 
 --- B-server-pades-B-LTA-invisible ---
   HTTP=200, Size=91846
-  ✅ B-server-pades-B-LTA-invisible (91846 bytes)
+  ✅ B-server-pades-B-LTA-invisible (91846 bytes)  [4.324s]
 
 --- B-server-pades-B-B-visible ---
   HTTP=200, Size=52182
-  ✅ B-server-pades-B-B-visible (52182 bytes)
+  ✅ B-server-pades-B-B-visible (52182 bytes)  [273ms]
 
 --- B-server-pades-B-T-visible ---
   HTTP=200, Size=52182
-  ✅ B-server-pades-B-T-visible (52182 bytes)
+  ✅ B-server-pades-B-T-visible (52182 bytes)  [775ms]
 
 --- B-server-pades-B-LT-visible ---
-  HTTP=200, Size=62052
-  ✅ B-server-pades-B-LT-visible (62052 bytes)
+  HTTP=200, Size=62053
+  ✅ B-server-pades-B-LT-visible (62053 bytes)  [3.780s]
 
 --- B-server-pades-B-LTA-visible ---
-  HTTP=200, Size=92735
-  ✅ B-server-pades-B-LTA-visible (92735 bytes)
+  HTTP=200, Size=92736
+  ✅ B-server-pades-B-LTA-visible (92736 bytes)  [4.509s]
 
 --- B-server-pkcs7-invisible ---
   HTTP=200, Size=51298
-  ✅ B-server-pkcs7-invisible (51298 bytes)
+  ✅ B-server-pkcs7-invisible (51298 bytes)  [339ms]
 
 --- B-server-pkcs7-visible ---
   HTTP=200, Size=52183
-  ✅ B-server-pkcs7-visible (52183 bytes)
+  ✅ B-server-pkcs7-visible (52183 bytes)  [227ms]
 
 --- B-server-pkcs7-invisible-tsa ---
-  HTTP=200, Size=51297
-  ✅ B-server-pkcs7-invisible-tsa (51297 bytes)
+  HTTP=200, Size=51298
+  ✅ B-server-pkcs7-invisible-tsa (51298 bytes)  [714ms]
 
 --- B-server-pkcs7-visible-tsa ---
   HTTP=200, Size=52183
-  ✅ B-server-pkcs7-visible-tsa (52183 bytes)
+  ✅ B-server-pkcs7-visible-tsa (52183 bytes)  [660ms]
 
 --- B-server-pkcs7-crl-only ---
-  HTTP=200, Size=51298
-  ✅ B-server-pkcs7-crl-only (51298 bytes)
+  HTTP=200, Size=51295
+  ✅ B-server-pkcs7-crl-only (51295 bytes)  [1.751s]
 
 --- B-server-pkcs7-ocsp-only ---
-  HTTP=200, Size=51297
-  ✅ B-server-pkcs7-ocsp-only (51297 bytes)
+  HTTP=200, Size=51298
+  ✅ B-server-pkcs7-ocsp-only (51298 bytes)  [1.896s]
 
 --- B-server-pkcs7-crl-ocsp ---
-  HTTP=200, Size=51297
-  ✅ B-server-pkcs7-crl-ocsp (51297 bytes)
+  HTTP=200, Size=51298
+  ✅ B-server-pkcs7-crl-ocsp (51298 bytes)  [1.613s]
 
 --- B-server-pkcs7-crl-ocsp-tsa ---
-  HTTP=200, Size=51297
-  ✅ B-server-pkcs7-crl-ocsp-tsa (51297 bytes)
+  HTTP=200, Size=51298
+  ✅ B-server-pkcs7-crl-ocsp-tsa (51298 bytes)  [2.121s]
 
 --- B-server-pkcs7-ltv-full-visible ---
   HTTP=200, Size=52181
-  ✅ B-server-pkcs7-ltv-full-visible (52181 bytes)
+  ✅ B-server-pkcs7-ltv-full-visible (52181 bytes)  [2.134s]
+
+  ⏱  Section B total: 31.954s
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SECTION C: CSC signDoc/form (raw CMS)
@@ -167,35 +177,37 @@ SECTION C: CSC signDoc/form (raw CMS)
 
 --- C-signdoc-pades-B-B ---
   HTTP=200
-  ✅ C-signdoc-pades-B-B
+  ✅ C-signdoc-pades-B-B  [331ms]
 
 --- C-signdoc-pades-B-T-tsa ---
   HTTP=200
-  ✅ C-signdoc-pades-B-T-tsa
+  ✅ C-signdoc-pades-B-T-tsa  [791ms]
 
 --- C-signdoc-pkcs7 ---
   HTTP=200
-  ✅ C-signdoc-pkcs7
+  ✅ C-signdoc-pkcs7  [250ms]
 
 --- C-signdoc-pkcs7-tsa ---
   HTTP=200
-  ✅ C-signdoc-pkcs7-tsa
+  ✅ C-signdoc-pkcs7-tsa  [963ms]
 
 --- C-signdoc-pkcs7-crl-only ---
   HTTP=200
-  ✅ C-signdoc-pkcs7-crl-only
+  ✅ C-signdoc-pkcs7-crl-only  [1.725s]
 
 --- C-signdoc-pkcs7-ocsp-only ---
   HTTP=200
-  ✅ C-signdoc-pkcs7-ocsp-only
+  ✅ C-signdoc-pkcs7-ocsp-only  [1.669s]
 
 --- C-signdoc-pkcs7-crl-ocsp ---
   HTTP=200
-  ✅ C-signdoc-pkcs7-crl-ocsp
+  ✅ C-signdoc-pkcs7-crl-ocsp  [1.723s]
 
 --- C-signdoc-pkcs7-crl-ocsp-tsa ---
   HTTP=200
-  ✅ C-signdoc-pkcs7-crl-ocsp-tsa
+  ✅ C-signdoc-pkcs7-crl-ocsp-tsa  [2.210s]
+
+  ⏱  Section C total: 10.978s
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SECTION D: Server-Side Validation (POST /api/v1/validate/form)
@@ -203,171 +215,173 @@ SECTION D: Server-Side Validation (POST /api/v1/validate/form)
 
 --- validate: A-cli-pades-B-B-invisible.pdf ---
   valid=True  sigs=1  ts=False  dss=False  ltv=False
-  ✅ validate A-cli-pades-B-B-invisible.pdf (sigs=1 ts=False dss=False ltv=False)
+  ✅ validate A-cli-pades-B-B-invisible.pdf (sigs=1 ts=False dss=False ltv=False)  [838ms]
 
 --- validate: A-cli-pades-B-LT-invisible.pdf ---
   valid=True  sigs=1  ts=True  dss=True  ltv=True
-  ✅ validate A-cli-pades-B-LT-invisible.pdf (sigs=1 ts=True dss=True ltv=True)
+  ✅ validate A-cli-pades-B-LT-invisible.pdf (sigs=1 ts=True dss=True ltv=True)  [1.194s]
 
 --- validate: A-cli-pades-B-LTA-invisible.pdf ---
   valid=True  sigs=2  ts=True  dss=True  ltv=True
-  ✅ validate A-cli-pades-B-LTA-invisible.pdf (sigs=2 ts=True dss=True ltv=True)
+  ✅ validate A-cli-pades-B-LTA-invisible.pdf (sigs=2 ts=True dss=True ltv=True)  [1.448s]
 
 --- validate: A-cli-pades-B-T-invisible.pdf ---
   valid=True  sigs=1  ts=True  dss=False  ltv=False
-  ✅ validate A-cli-pades-B-T-invisible.pdf (sigs=1 ts=True dss=False ltv=False)
+  ✅ validate A-cli-pades-B-T-invisible.pdf (sigs=1 ts=True dss=False ltv=False)  [864ms]
 
 --- validate: A-cli-pades-BT-visible.pdf ---
   valid=True  sigs=1  ts=True  dss=False  ltv=False
-  ✅ validate A-cli-pades-BT-visible.pdf (sigs=1 ts=True dss=False ltv=False)
+  ✅ validate A-cli-pades-BT-visible.pdf (sigs=1 ts=True dss=False ltv=False)  [926ms]
 
 --- validate: A-cli-pkcs7-crl-ocsp-tsa.pdf ---
   valid=True  sigs=1  ts=True  dss=False  ltv=True
-  ✅ validate A-cli-pkcs7-crl-ocsp-tsa.pdf (sigs=1 ts=True dss=False ltv=True)
+  ✅ validate A-cli-pkcs7-crl-ocsp-tsa.pdf (sigs=1 ts=True dss=False ltv=True)  [1.027s]
 
 --- validate: A-cli-pkcs7-crl-ocsp.pdf ---
   valid=True  sigs=1  ts=False  dss=False  ltv=False
-  ✅ validate A-cli-pkcs7-crl-ocsp.pdf (sigs=1 ts=False dss=False ltv=False)
+  ✅ validate A-cli-pkcs7-crl-ocsp.pdf (sigs=1 ts=False dss=False ltv=False)  [1.047s]
 
 --- validate: A-cli-pkcs7-crl-only.pdf ---
   valid=True  sigs=1  ts=False  dss=False  ltv=False
-  ✅ validate A-cli-pkcs7-crl-only.pdf (sigs=1 ts=False dss=False ltv=False)
+  ✅ validate A-cli-pkcs7-crl-only.pdf (sigs=1 ts=False dss=False ltv=False)  [811ms]
 
 --- validate: A-cli-pkcs7-invisible.pdf ---
   valid=True  sigs=1  ts=False  dss=False  ltv=False
-  ✅ validate A-cli-pkcs7-invisible.pdf (sigs=1 ts=False dss=False ltv=False)
+  ✅ validate A-cli-pkcs7-invisible.pdf (sigs=1 ts=False dss=False ltv=False)  [799ms]
 
 --- validate: A-cli-pkcs7-ltv-full-visible.pdf ---
   valid=True  sigs=1  ts=True  dss=False  ltv=True
-  ✅ validate A-cli-pkcs7-ltv-full-visible.pdf (sigs=1 ts=True dss=False ltv=True)
+  ✅ validate A-cli-pkcs7-ltv-full-visible.pdf (sigs=1 ts=True dss=False ltv=True)  [837ms]
 
 --- validate: A-cli-pkcs7-ocsp-only.pdf ---
   valid=True  sigs=1  ts=False  dss=False  ltv=False
-  ✅ validate A-cli-pkcs7-ocsp-only.pdf (sigs=1 ts=False dss=False ltv=False)
+  ✅ validate A-cli-pkcs7-ocsp-only.pdf (sigs=1 ts=False dss=False ltv=False)  [870ms]
 
 --- validate: A-cli-pkcs7-visible.pdf ---
   valid=True  sigs=1  ts=False  dss=False  ltv=False
-  ✅ validate A-cli-pkcs7-visible.pdf (sigs=1 ts=False dss=False ltv=False)
+  ✅ validate A-cli-pkcs7-visible.pdf (sigs=1 ts=False dss=False ltv=False)  [890ms]
 
 --- validate: AH-cli-signhash-pades-B-B-invisible.pdf ---
   valid=True  sigs=1  ts=False  dss=False  ltv=False
-  ✅ validate AH-cli-signhash-pades-B-B-invisible.pdf (sigs=1 ts=False dss=False ltv=False)
+  ✅ validate AH-cli-signhash-pades-B-B-invisible.pdf (sigs=1 ts=False dss=False ltv=False)  [1.153s]
 
 --- validate: AH-cli-signhash-pades-B-LT-invisible.pdf ---
   valid=True  sigs=1  ts=True  dss=True  ltv=True
-  ✅ validate AH-cli-signhash-pades-B-LT-invisible.pdf (sigs=1 ts=True dss=True ltv=True)
+  ✅ validate AH-cli-signhash-pades-B-LT-invisible.pdf (sigs=1 ts=True dss=True ltv=True)  [1.222s]
 
 --- validate: AH-cli-signhash-pades-B-LTA-invisible.pdf ---
   valid=True  sigs=2  ts=True  dss=True  ltv=True
-  ✅ validate AH-cli-signhash-pades-B-LTA-invisible.pdf (sigs=2 ts=True dss=True ltv=True)
+  ✅ validate AH-cli-signhash-pades-B-LTA-invisible.pdf (sigs=2 ts=True dss=True ltv=True)  [1.611s]
 
 --- validate: AH-cli-signhash-pades-B-T-invisible.pdf ---
   valid=True  sigs=1  ts=True  dss=False  ltv=False
-  ✅ validate AH-cli-signhash-pades-B-T-invisible.pdf (sigs=1 ts=True dss=False ltv=False)
+  ✅ validate AH-cli-signhash-pades-B-T-invisible.pdf (sigs=1 ts=True dss=False ltv=False)  [836ms]
 
 --- validate: AH-cli-signhash-pades-BT-visible.pdf ---
   valid=True  sigs=1  ts=True  dss=False  ltv=False
-  ✅ validate AH-cli-signhash-pades-BT-visible.pdf (sigs=1 ts=True dss=False ltv=False)
+  ✅ validate AH-cli-signhash-pades-BT-visible.pdf (sigs=1 ts=True dss=False ltv=False)  [916ms]
 
 --- validate: AH-cli-signhash-pkcs7-crl-ocsp-tsa.pdf ---
   valid=True  sigs=1  ts=True  dss=False  ltv=True
-  ✅ validate AH-cli-signhash-pkcs7-crl-ocsp-tsa.pdf (sigs=1 ts=True dss=False ltv=True)
+  ✅ validate AH-cli-signhash-pkcs7-crl-ocsp-tsa.pdf (sigs=1 ts=True dss=False ltv=True)  [703ms]
 
 --- validate: AH-cli-signhash-pkcs7-crl-ocsp.pdf ---
   valid=True  sigs=1  ts=False  dss=False  ltv=False
-  ✅ validate AH-cli-signhash-pkcs7-crl-ocsp.pdf (sigs=1 ts=False dss=False ltv=False)
+  ✅ validate AH-cli-signhash-pkcs7-crl-ocsp.pdf (sigs=1 ts=False dss=False ltv=False)  [654ms]
 
 --- validate: AH-cli-signhash-pkcs7-crl-only.pdf ---
   valid=True  sigs=1  ts=False  dss=False  ltv=False
-  ✅ validate AH-cli-signhash-pkcs7-crl-only.pdf (sigs=1 ts=False dss=False ltv=False)
+  ✅ validate AH-cli-signhash-pkcs7-crl-only.pdf (sigs=1 ts=False dss=False ltv=False)  [688ms]
 
 --- validate: AH-cli-signhash-pkcs7-invisible.pdf ---
   valid=True  sigs=1  ts=False  dss=False  ltv=False
-  ✅ validate AH-cli-signhash-pkcs7-invisible.pdf (sigs=1 ts=False dss=False ltv=False)
+  ✅ validate AH-cli-signhash-pkcs7-invisible.pdf (sigs=1 ts=False dss=False ltv=False)  [643ms]
 
 --- validate: AH-cli-signhash-pkcs7-ltv-full-visible.pdf ---
   valid=True  sigs=1  ts=True  dss=False  ltv=True
-  ✅ validate AH-cli-signhash-pkcs7-ltv-full-visible.pdf (sigs=1 ts=True dss=False ltv=True)
+  ✅ validate AH-cli-signhash-pkcs7-ltv-full-visible.pdf (sigs=1 ts=True dss=False ltv=True)  [598ms]
 
 --- validate: AH-cli-signhash-pkcs7-ocsp-only.pdf ---
   valid=True  sigs=1  ts=False  dss=False  ltv=False
-  ✅ validate AH-cli-signhash-pkcs7-ocsp-only.pdf (sigs=1 ts=False dss=False ltv=False)
+  ✅ validate AH-cli-signhash-pkcs7-ocsp-only.pdf (sigs=1 ts=False dss=False ltv=False)  [596ms]
 
 --- validate: AH-cli-signhash-pkcs7-tsa.pdf ---
   valid=True  sigs=1  ts=True  dss=False  ltv=False
-  ✅ validate AH-cli-signhash-pkcs7-tsa.pdf (sigs=1 ts=True dss=False ltv=False)
+  ✅ validate AH-cli-signhash-pkcs7-tsa.pdf (sigs=1 ts=True dss=False ltv=False)  [713ms]
 
 --- validate: AH-cli-signhash-pkcs7-visible.pdf ---
   valid=True  sigs=1  ts=False  dss=False  ltv=False
-  ✅ validate AH-cli-signhash-pkcs7-visible.pdf (sigs=1 ts=False dss=False ltv=False)
+  ✅ validate AH-cli-signhash-pkcs7-visible.pdf (sigs=1 ts=False dss=False ltv=False)  [716ms]
 
 --- validate: B-server-pades-B-B-invisible.pdf ---
   valid=True  sigs=1  ts=False  dss=False  ltv=False
-  ✅ validate B-server-pades-B-B-invisible.pdf (sigs=1 ts=False dss=False ltv=False)
+  ✅ validate B-server-pades-B-B-invisible.pdf (sigs=1 ts=False dss=False ltv=False)  [741ms]
 
 --- validate: B-server-pades-B-B-visible.pdf ---
   valid=True  sigs=1  ts=False  dss=False  ltv=False
-  ✅ validate B-server-pades-B-B-visible.pdf (sigs=1 ts=False dss=False ltv=False)
+  ✅ validate B-server-pades-B-B-visible.pdf (sigs=1 ts=False dss=False ltv=False)  [623ms]
 
 --- validate: B-server-pades-B-LT-invisible.pdf ---
   valid=True  sigs=1  ts=True  dss=True  ltv=True
-  ✅ validate B-server-pades-B-LT-invisible.pdf (sigs=1 ts=True dss=True ltv=True)
+  ✅ validate B-server-pades-B-LT-invisible.pdf (sigs=1 ts=True dss=True ltv=True)  [857ms]
 
 --- validate: B-server-pades-B-LT-visible.pdf ---
   valid=True  sigs=1  ts=True  dss=True  ltv=True
-  ✅ validate B-server-pades-B-LT-visible.pdf (sigs=1 ts=True dss=True ltv=True)
+  ✅ validate B-server-pades-B-LT-visible.pdf (sigs=1 ts=True dss=True ltv=True)  [1.062s]
 
 --- validate: B-server-pades-B-LTA-invisible.pdf ---
   valid=True  sigs=2  ts=True  dss=True  ltv=True
-  ✅ validate B-server-pades-B-LTA-invisible.pdf (sigs=2 ts=True dss=True ltv=True)
+  ✅ validate B-server-pades-B-LTA-invisible.pdf (sigs=2 ts=True dss=True ltv=True)  [1.078s]
 
 --- validate: B-server-pades-B-LTA-visible.pdf ---
   valid=True  sigs=2  ts=True  dss=True  ltv=True
-  ✅ validate B-server-pades-B-LTA-visible.pdf (sigs=2 ts=True dss=True ltv=True)
+  ✅ validate B-server-pades-B-LTA-visible.pdf (sigs=2 ts=True dss=True ltv=True)  [1.672s]
 
 --- validate: B-server-pades-B-T-invisible.pdf ---
   valid=True  sigs=1  ts=True  dss=False  ltv=False
-  ✅ validate B-server-pades-B-T-invisible.pdf (sigs=1 ts=True dss=False ltv=False)
+  ✅ validate B-server-pades-B-T-invisible.pdf (sigs=1 ts=True dss=False ltv=False)  [1.303s]
 
 --- validate: B-server-pades-B-T-visible.pdf ---
   valid=True  sigs=1  ts=True  dss=False  ltv=False
-  ✅ validate B-server-pades-B-T-visible.pdf (sigs=1 ts=True dss=False ltv=False)
+  ✅ validate B-server-pades-B-T-visible.pdf (sigs=1 ts=True dss=False ltv=False)  [895ms]
 
 --- validate: B-server-pkcs7-crl-ocsp-tsa.pdf ---
   valid=True  sigs=1  ts=True  dss=False  ltv=True
-  ✅ validate B-server-pkcs7-crl-ocsp-tsa.pdf (sigs=1 ts=True dss=False ltv=True)
+  ✅ validate B-server-pkcs7-crl-ocsp-tsa.pdf (sigs=1 ts=True dss=False ltv=True)  [1.082s]
 
 --- validate: B-server-pkcs7-crl-ocsp.pdf ---
   valid=True  sigs=1  ts=False  dss=False  ltv=False
-  ✅ validate B-server-pkcs7-crl-ocsp.pdf (sigs=1 ts=False dss=False ltv=False)
+  ✅ validate B-server-pkcs7-crl-ocsp.pdf (sigs=1 ts=False dss=False ltv=False)  [971ms]
 
 --- validate: B-server-pkcs7-crl-only.pdf ---
   valid=True  sigs=1  ts=False  dss=False  ltv=False
-  ✅ validate B-server-pkcs7-crl-only.pdf (sigs=1 ts=False dss=False ltv=False)
+  ✅ validate B-server-pkcs7-crl-only.pdf (sigs=1 ts=False dss=False ltv=False)  [724ms]
 
 --- validate: B-server-pkcs7-invisible-tsa.pdf ---
   valid=True  sigs=1  ts=True  dss=False  ltv=False
-  ✅ validate B-server-pkcs7-invisible-tsa.pdf (sigs=1 ts=True dss=False ltv=False)
+  ✅ validate B-server-pkcs7-invisible-tsa.pdf (sigs=1 ts=True dss=False ltv=False)  [839ms]
 
 --- validate: B-server-pkcs7-invisible.pdf ---
   valid=True  sigs=1  ts=False  dss=False  ltv=False
-  ✅ validate B-server-pkcs7-invisible.pdf (sigs=1 ts=False dss=False ltv=False)
+  ✅ validate B-server-pkcs7-invisible.pdf (sigs=1 ts=False dss=False ltv=False)  [785ms]
 
 --- validate: B-server-pkcs7-ltv-full-visible.pdf ---
   valid=True  sigs=1  ts=True  dss=False  ltv=True
-  ✅ validate B-server-pkcs7-ltv-full-visible.pdf (sigs=1 ts=True dss=False ltv=True)
+  ✅ validate B-server-pkcs7-ltv-full-visible.pdf (sigs=1 ts=True dss=False ltv=True)  [1.259s]
 
 --- validate: B-server-pkcs7-ocsp-only.pdf ---
   valid=True  sigs=1  ts=False  dss=False  ltv=False
-  ✅ validate B-server-pkcs7-ocsp-only.pdf (sigs=1 ts=False dss=False ltv=False)
+  ✅ validate B-server-pkcs7-ocsp-only.pdf (sigs=1 ts=False dss=False ltv=False)  [1.003s]
 
 --- validate: B-server-pkcs7-visible-tsa.pdf ---
   valid=True  sigs=1  ts=True  dss=False  ltv=False
-  ✅ validate B-server-pkcs7-visible-tsa.pdf (sigs=1 ts=True dss=False ltv=False)
+  ✅ validate B-server-pkcs7-visible-tsa.pdf (sigs=1 ts=True dss=False ltv=False)  [1.166s]
 
 --- validate: B-server-pkcs7-visible.pdf ---
   valid=True  sigs=1  ts=False  dss=False  ltv=False
-  ✅ validate B-server-pkcs7-visible.pdf (sigs=1 ts=False dss=False ltv=False)
+  ✅ validate B-server-pkcs7-visible.pdf (sigs=1 ts=False dss=False ltv=False)  [1.016s]
+
+  ⏱  Section D total: 44.411s
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SECTION E: CLI Verify (local offline)
@@ -375,188 +389,250 @@ SECTION E: CLI Verify (local offline)
 
 --- verify: A-cli-pades-B-B-invisible.pdf ---
   ts=false  dss=false  ltv=false
-  ✅ verify A-cli-pades-B-B-invisible.pdf (ts=false dss=false ltv=false)
+  ✅ verify A-cli-pades-B-B-invisible.pdf (ts=false dss=false ltv=false)  [391ms]
 
 --- verify: A-cli-pades-B-LT-invisible.pdf ---
   ts=true  dss=true  ltv=true
-  ✅ verify A-cli-pades-B-LT-invisible.pdf (ts=true dss=true ltv=true)
+  ✅ verify A-cli-pades-B-LT-invisible.pdf (ts=true dss=true ltv=true)  [646ms]
 
 --- verify: A-cli-pades-B-LTA-invisible.pdf ---
   ts=true  dss=true  ltv=true
-  ✅ verify A-cli-pades-B-LTA-invisible.pdf (ts=true dss=true ltv=true)
+  ✅ verify A-cli-pades-B-LTA-invisible.pdf (ts=true dss=true ltv=true)  [998ms]
 
 --- verify: A-cli-pades-B-T-invisible.pdf ---
   ts=true  dss=false  ltv=false
-  ✅ verify A-cli-pades-B-T-invisible.pdf (ts=true dss=false ltv=false)
+  ✅ verify A-cli-pades-B-T-invisible.pdf (ts=true dss=false ltv=false)  [392ms]
 
 --- verify: A-cli-pades-BT-visible.pdf ---
   ts=true  dss=false  ltv=false
-  ✅ verify A-cli-pades-BT-visible.pdf (ts=true dss=false ltv=false)
+  ✅ verify A-cli-pades-BT-visible.pdf (ts=true dss=false ltv=false)  [325ms]
 
 --- verify: A-cli-pkcs7-crl-ocsp-tsa.pdf ---
   ts=true  dss=false  ltv=true
-  ✅ verify A-cli-pkcs7-crl-ocsp-tsa.pdf (ts=true dss=false ltv=true)
+  ✅ verify A-cli-pkcs7-crl-ocsp-tsa.pdf (ts=true dss=false ltv=true)  [367ms]
 
 --- verify: A-cli-pkcs7-crl-ocsp.pdf ---
   ts=false  dss=false  ltv=false
-  ✅ verify A-cli-pkcs7-crl-ocsp.pdf (ts=false dss=false ltv=false)
+  ✅ verify A-cli-pkcs7-crl-ocsp.pdf (ts=false dss=false ltv=false)  [376ms]
 
 --- verify: A-cli-pkcs7-crl-only.pdf ---
   ts=false  dss=false  ltv=false
-  ✅ verify A-cli-pkcs7-crl-only.pdf (ts=false dss=false ltv=false)
+  ✅ verify A-cli-pkcs7-crl-only.pdf (ts=false dss=false ltv=false)  [341ms]
 
 --- verify: A-cli-pkcs7-invisible.pdf ---
   ts=false  dss=false  ltv=false
-  ✅ verify A-cli-pkcs7-invisible.pdf (ts=false dss=false ltv=false)
+  ✅ verify A-cli-pkcs7-invisible.pdf (ts=false dss=false ltv=false)  [344ms]
 
 --- verify: A-cli-pkcs7-ltv-full-visible.pdf ---
   ts=true  dss=false  ltv=true
-  ✅ verify A-cli-pkcs7-ltv-full-visible.pdf (ts=true dss=false ltv=true)
+  ✅ verify A-cli-pkcs7-ltv-full-visible.pdf (ts=true dss=false ltv=true)  [302ms]
 
 --- verify: A-cli-pkcs7-ocsp-only.pdf ---
   ts=false  dss=false  ltv=false
-  ✅ verify A-cli-pkcs7-ocsp-only.pdf (ts=false dss=false ltv=false)
+  ✅ verify A-cli-pkcs7-ocsp-only.pdf (ts=false dss=false ltv=false)  [410ms]
 
 --- verify: A-cli-pkcs7-visible.pdf ---
   ts=false  dss=false  ltv=false
-  ✅ verify A-cli-pkcs7-visible.pdf (ts=false dss=false ltv=false)
+  ✅ verify A-cli-pkcs7-visible.pdf (ts=false dss=false ltv=false)  [446ms]
 
 --- verify: AH-cli-signhash-pades-B-B-invisible.pdf ---
   ts=false  dss=false  ltv=false
-  ✅ verify AH-cli-signhash-pades-B-B-invisible.pdf (ts=false dss=false ltv=false)
+  ✅ verify AH-cli-signhash-pades-B-B-invisible.pdf (ts=false dss=false ltv=false)  [560ms]
 
 --- verify: AH-cli-signhash-pades-B-LT-invisible.pdf ---
   ts=true  dss=true  ltv=true
-  ✅ verify AH-cli-signhash-pades-B-LT-invisible.pdf (ts=true dss=true ltv=true)
+  ✅ verify AH-cli-signhash-pades-B-LT-invisible.pdf (ts=true dss=true ltv=true)  [972ms]
 
 --- verify: AH-cli-signhash-pades-B-LTA-invisible.pdf ---
   ts=true  dss=true  ltv=true
-  ✅ verify AH-cli-signhash-pades-B-LTA-invisible.pdf (ts=true dss=true ltv=true)
+  ✅ verify AH-cli-signhash-pades-B-LTA-invisible.pdf (ts=true dss=true ltv=true)  [1.367s]
 
 --- verify: AH-cli-signhash-pades-B-T-invisible.pdf ---
   ts=true  dss=false  ltv=false
-  ✅ verify AH-cli-signhash-pades-B-T-invisible.pdf (ts=true dss=false ltv=false)
+  ✅ verify AH-cli-signhash-pades-B-T-invisible.pdf (ts=true dss=false ltv=false)  [940ms]
 
 --- verify: AH-cli-signhash-pades-BT-visible.pdf ---
   ts=true  dss=false  ltv=false
-  ✅ verify AH-cli-signhash-pades-BT-visible.pdf (ts=true dss=false ltv=false)
+  ✅ verify AH-cli-signhash-pades-BT-visible.pdf (ts=true dss=false ltv=false)  [720ms]
 
 --- verify: AH-cli-signhash-pkcs7-crl-ocsp-tsa.pdf ---
   ts=true  dss=false  ltv=true
-  ✅ verify AH-cli-signhash-pkcs7-crl-ocsp-tsa.pdf (ts=true dss=false ltv=true)
+  ✅ verify AH-cli-signhash-pkcs7-crl-ocsp-tsa.pdf (ts=true dss=false ltv=true)  [462ms]
 
 --- verify: AH-cli-signhash-pkcs7-crl-ocsp.pdf ---
   ts=false  dss=false  ltv=false
-  ✅ verify AH-cli-signhash-pkcs7-crl-ocsp.pdf (ts=false dss=false ltv=false)
+  ✅ verify AH-cli-signhash-pkcs7-crl-ocsp.pdf (ts=false dss=false ltv=false)  [591ms]
 
 --- verify: AH-cli-signhash-pkcs7-crl-only.pdf ---
   ts=false  dss=false  ltv=false
-  ✅ verify AH-cli-signhash-pkcs7-crl-only.pdf (ts=false dss=false ltv=false)
+  ✅ verify AH-cli-signhash-pkcs7-crl-only.pdf (ts=false dss=false ltv=false)  [587ms]
 
 --- verify: AH-cli-signhash-pkcs7-invisible.pdf ---
   ts=false  dss=false  ltv=false
-  ✅ verify AH-cli-signhash-pkcs7-invisible.pdf (ts=false dss=false ltv=false)
+  ✅ verify AH-cli-signhash-pkcs7-invisible.pdf (ts=false dss=false ltv=false)  [330ms]
 
 --- verify: AH-cli-signhash-pkcs7-ltv-full-visible.pdf ---
   ts=true  dss=false  ltv=true
-  ✅ verify AH-cli-signhash-pkcs7-ltv-full-visible.pdf (ts=true dss=false ltv=true)
+  ✅ verify AH-cli-signhash-pkcs7-ltv-full-visible.pdf (ts=true dss=false ltv=true)  [355ms]
 
 --- verify: AH-cli-signhash-pkcs7-ocsp-only.pdf ---
   ts=false  dss=false  ltv=false
-  ✅ verify AH-cli-signhash-pkcs7-ocsp-only.pdf (ts=false dss=false ltv=false)
+  ✅ verify AH-cli-signhash-pkcs7-ocsp-only.pdf (ts=false dss=false ltv=false)  [254ms]
 
 --- verify: AH-cli-signhash-pkcs7-tsa.pdf ---
   ts=true  dss=false  ltv=false
-  ✅ verify AH-cli-signhash-pkcs7-tsa.pdf (ts=true dss=false ltv=false)
+  ✅ verify AH-cli-signhash-pkcs7-tsa.pdf (ts=true dss=false ltv=false)  [307ms]
 
 --- verify: AH-cli-signhash-pkcs7-visible.pdf ---
   ts=false  dss=false  ltv=false
-  ✅ verify AH-cli-signhash-pkcs7-visible.pdf (ts=false dss=false ltv=false)
+  ✅ verify AH-cli-signhash-pkcs7-visible.pdf (ts=false dss=false ltv=false)  [651ms]
 
 --- verify: B-server-pades-B-B-invisible.pdf ---
   ts=false  dss=false  ltv=false
-  ✅ verify B-server-pades-B-B-invisible.pdf (ts=false dss=false ltv=false)
+  ✅ verify B-server-pades-B-B-invisible.pdf (ts=false dss=false ltv=false)  [374ms]
 
 --- verify: B-server-pades-B-B-visible.pdf ---
   ts=false  dss=false  ltv=false
-  ✅ verify B-server-pades-B-B-visible.pdf (ts=false dss=false ltv=false)
+  ✅ verify B-server-pades-B-B-visible.pdf (ts=false dss=false ltv=false)  [558ms]
 
 --- verify: B-server-pades-B-LT-invisible.pdf ---
   ts=true  dss=true  ltv=true
-  ✅ verify B-server-pades-B-LT-invisible.pdf (ts=true dss=true ltv=true)
+  ✅ verify B-server-pades-B-LT-invisible.pdf (ts=true dss=true ltv=true)  [833ms]
 
 --- verify: B-server-pades-B-LT-visible.pdf ---
   ts=true  dss=true  ltv=true
-  ✅ verify B-server-pades-B-LT-visible.pdf (ts=true dss=true ltv=true)
+  ✅ verify B-server-pades-B-LT-visible.pdf (ts=true dss=true ltv=true)  [652ms]
 
 --- verify: B-server-pades-B-LTA-invisible.pdf ---
   ts=true  dss=true  ltv=true
-  ✅ verify B-server-pades-B-LTA-invisible.pdf (ts=true dss=true ltv=true)
+  ✅ verify B-server-pades-B-LTA-invisible.pdf (ts=true dss=true ltv=true)  [829ms]
 
 --- verify: B-server-pades-B-LTA-visible.pdf ---
   ts=true  dss=true  ltv=true
-  ✅ verify B-server-pades-B-LTA-visible.pdf (ts=true dss=true ltv=true)
+  ✅ verify B-server-pades-B-LTA-visible.pdf (ts=true dss=true ltv=true)  [748ms]
 
 --- verify: B-server-pades-B-T-invisible.pdf ---
   ts=true  dss=false  ltv=false
-  ✅ verify B-server-pades-B-T-invisible.pdf (ts=true dss=false ltv=false)
+  ✅ verify B-server-pades-B-T-invisible.pdf (ts=true dss=false ltv=false)  [311ms]
 
 --- verify: B-server-pades-B-T-visible.pdf ---
   ts=true  dss=false  ltv=false
-  ✅ verify B-server-pades-B-T-visible.pdf (ts=true dss=false ltv=false)
+  ✅ verify B-server-pades-B-T-visible.pdf (ts=true dss=false ltv=false)  [275ms]
 
 --- verify: B-server-pkcs7-crl-ocsp-tsa.pdf ---
   ts=true  dss=false  ltv=true
-  ✅ verify B-server-pkcs7-crl-ocsp-tsa.pdf (ts=true dss=false ltv=true)
+  ✅ verify B-server-pkcs7-crl-ocsp-tsa.pdf (ts=true dss=false ltv=true)  [288ms]
 
 --- verify: B-server-pkcs7-crl-ocsp.pdf ---
   ts=false  dss=false  ltv=false
-  ✅ verify B-server-pkcs7-crl-ocsp.pdf (ts=false dss=false ltv=false)
+  ✅ verify B-server-pkcs7-crl-ocsp.pdf (ts=false dss=false ltv=false)  [288ms]
 
 --- verify: B-server-pkcs7-crl-only.pdf ---
   ts=false  dss=false  ltv=false
-  ✅ verify B-server-pkcs7-crl-only.pdf (ts=false dss=false ltv=false)
+  ✅ verify B-server-pkcs7-crl-only.pdf (ts=false dss=false ltv=false)  [300ms]
 
 --- verify: B-server-pkcs7-invisible-tsa.pdf ---
   ts=true  dss=false  ltv=false
-  ✅ verify B-server-pkcs7-invisible-tsa.pdf (ts=true dss=false ltv=false)
+  ✅ verify B-server-pkcs7-invisible-tsa.pdf (ts=true dss=false ltv=false)  [343ms]
 
 --- verify: B-server-pkcs7-invisible.pdf ---
   ts=false  dss=false  ltv=false
-  ✅ verify B-server-pkcs7-invisible.pdf (ts=false dss=false ltv=false)
+  ✅ verify B-server-pkcs7-invisible.pdf (ts=false dss=false ltv=false)  [294ms]
 
 --- verify: B-server-pkcs7-ltv-full-visible.pdf ---
   ts=true  dss=false  ltv=true
-  ✅ verify B-server-pkcs7-ltv-full-visible.pdf (ts=true dss=false ltv=true)
+  ✅ verify B-server-pkcs7-ltv-full-visible.pdf (ts=true dss=false ltv=true)  [266ms]
 
 --- verify: B-server-pkcs7-ocsp-only.pdf ---
   ts=false  dss=false  ltv=false
-  ✅ verify B-server-pkcs7-ocsp-only.pdf (ts=false dss=false ltv=false)
+  ✅ verify B-server-pkcs7-ocsp-only.pdf (ts=false dss=false ltv=false)  [273ms]
 
 --- verify: B-server-pkcs7-visible-tsa.pdf ---
   ts=true  dss=false  ltv=false
-  ✅ verify B-server-pkcs7-visible-tsa.pdf (ts=true dss=false ltv=false)
+  ✅ verify B-server-pkcs7-visible-tsa.pdf (ts=true dss=false ltv=false)  [315ms]
 
 --- verify: B-server-pkcs7-visible.pdf ---
   ts=false  dss=false  ltv=false
-  ✅ verify B-server-pkcs7-visible.pdf (ts=false dss=false ltv=false)
+  ✅ verify B-server-pkcs7-visible.pdf (ts=false dss=false ltv=false)  [287ms]
 
-╔═══════════════════════════════════════════════════════════════╗
-║                     FINAL SUMMARY                             ║
-╠═══════════════════════════════════════════════════════════════╣
-║  Total:  134                                                 ║
-║  Passed: 134                                                 ║
-║  Failed: 0                                                   ║
-╠═══════════════════════════════════════════════════════════════╣
-║  A:  Client CLI sign (PAdES B-B/T/LT/LTA + PKCS7 inv/vis)  ║
-║  AH: Client CLI signHash (all variants: PAdES/PKCS7/LTV)   ║
-║  B:  Server signPdf/form (PAdES 4×inv + 4×vis + PKCS7 ×4)  ║
-║  C:  CSC signDoc/form (PAdES B-B/B-T + PKCS7 ×2)           ║
-║  D:  Server validate/form (all signed PDFs)                  ║
-║  E:  CLI verify (all signed PDFs)                            ║
-╚═══════════════════════════════════════════════════════════════╝
+  ⏱  Section E total: 25.815s
 
-🎉 ALL 134 TESTS PASSED
+╔══════════════════════════════════════════════════════════════════════╗
+║                          FINAL SUMMARY                              ║
+╠══════════════════════════════════════════════════════════════════════╣
+║  Total:  134                                                        ║
+║  Passed: 134                                                        ║
+║  Failed: 0                                                          ║
+║  Time:   2m 44.229s                                                  ║
+╠══════════════════════════════════════════════════════════════════════╣
+║  Section Breakdown                                                   ║
+╠══════════════════════════════════════════════════════════════════════╣
+║  A   │ 12 tests │      22.117s │ Client CLI signDoc  (PAdES + PKCS7 + LTV)║
+║  AH  │ 13 tests │      22.778s │ Client CLI signHash (PAdES + PKCS7 + LTV)║
+║  B   │ 17 tests │      31.954s │ Server signPdf/form (PAdES + PKCS7 + LTV)║
+║  C   │  8 tests │      10.978s │ CSC signDoc/form    (raw CMS variants)   ║
+║  D   │ 42 tests │      44.411s │ Server validate/form                      ║
+║  E   │ 42 tests │      25.815s │ CLI verify (offline)                      ║
+╚══════════════════════════════════════════════════════════════════════╝
 
-Output: /tmp/signing-retest-1772957268
-Report: /tmp/signing-retest-1772957268/report.txt
+┌───────────────────────────────────────────────────────────────────────────────┐
+│              PERFORMANCE COMPARISON — Signing Methods (A vs AH vs B)          │
+│  ⚠️  Local prototype only — debug build, loopback, Nowina test certificates    │
+│  External TSA/CRL/OCSP calls add variable network latency (100-500ms each)    │
+├───────────────────────────────────────────────────────────────────────────────┤
+│  Variant                                        │      Time │      Size │
+├───────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  ▸ pades-B-B-invisible                         │           │           │
+│    Client signDoc  (A)                          │     214ms │   51340 B │
+│    Client signHash (AH)                         │     325ms │   51341 B │
+│    Server signPdf  (B)                          │     173ms │   51298 B │
+│                                                                               │
+│  ▸ pades-B-T-invisible                         │           │           │
+│    Client signDoc  (A)                          │     962ms │   51340 B │
+│    Client signHash (AH)                         │    1.002s │   51341 B │
+│    Server signPdf  (B)                          │     651ms │   51298 B │
+│                                                                               │
+│  ▸ pades-B-LT-invisible                        │           │           │
+│    Client signDoc  (A)                          │    3.996s │   61211 B │
+│    Client signHash (AH)                         │    4.019s │   61211 B │
+│    Server signPdf  (B)                          │    3.793s │   61168 B │
+│                                                                               │
+│  ▸ pades-B-LTA-invisible                       │           │           │
+│    Client signDoc  (A)                          │    4.760s │   91888 B │
+│    Client signHash (AH)                         │    4.592s │   91889 B │
+│    Server signPdf  (B)                          │    4.324s │   91846 B │
+│                                                                               │
+│  ▸ pades-BT-visible                            │           │           │
+│    Client signDoc  (A)                          │     865ms │   52231 B │
+│    Client signHash (AH)                         │     675ms │   52231 B │
+│                                                                               │
+│  ▸ pkcs7-invisible                             │           │           │
+│    Client signDoc  (A)                          │     215ms │   51341 B │
+│    Client signHash (AH)                         │     196ms │   51341 B │
+│    Server signPdf  (B)                          │     339ms │   51298 B │
+│                                                                               │
+│  ▸ pkcs7-visible                               │           │           │
+│    Client signDoc  (A)                          │     207ms │   52230 B │
+│    Client signHash (AH)                         │     193ms │   52231 B │
+│    Server signPdf  (B)                          │     227ms │   52183 B │
+├───────────────────────────────────────────────────────────────────────────────┤
+│  Average signing time per test:                                               │
+│    Client signDoc  (A):     1.723s avg  (12 tests,      20.680s total)       │
+│    Client signHash (AH):    1.610s avg  (13 tests,      20.940s total)       │
+│    Server signPdf  (B):     1.749s avg  (17 tests,      29.733s total)       │
+├───────────────────────────────────────────────────────────────────────────────┤
+│  Notes:                                                                       │
+│  • signHash sends only 32 bytes vs full byte-range content (signDoc)          │
+│  • Server signPdf handles full pipeline in one HTTP call (fewest round-trips) │
+│  • B-LT/B-LTA include DSS dictionary + document timestamp (extra I/O)        │
+│  • Tests with TSA/CRL/OCSP include external network calls                    │
+├───────────────────────────────────────────────────────────────────────────────┤
+│  ⚠️  DISCLAIMER: Debug build, loopback, Nowina test PKI.                      │
+│  These timings are for relative comparison only, NOT production benchmarks.   │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+🎉 ALL 134 TESTS PASSED in 2m 44.229s
+
+Output: /tmp/signing-retest-1772959212
+Report: /tmp/signing-retest-1772959212/report.txt
