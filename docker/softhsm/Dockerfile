@@ -26,13 +26,11 @@ COPY certs/nowina/user-cert.pem /opt/certs/user-cert.pem
 COPY certs/nowina/user-key.pem  /opt/certs/user-key.pem
 COPY certs/nowina/ca-chain.pem  /opt/certs/ca-chain.pem
 
-# Copy and run initialization script
+# Copy initialization script (runs at startup, not build time)
 COPY docker/softhsm/init-hsm.sh /opt/init-hsm.sh
-RUN chmod +x /opt/init-hsm.sh && /opt/init-hsm.sh
+RUN chmod +x /opt/init-hsm.sh
 
-# Expose the token directory as a volume so the Rust server can mount it
 VOLUME ["/var/lib/softhsm/tokens"]
 
-# Keep container running (the token store is accessed via file mount)
-CMD ["tail", "-f", "/dev/null"]
-
+# Default: init token then keep running
+CMD ["/bin/bash", "-c", "/opt/init-hsm.sh && tail -f /dev/null"]

@@ -26,6 +26,13 @@ CERT_LABEL="user-cert"
 echo "=== SoftHSM v2 Token Initialization ==="
 echo ""
 
+# ── Check if already initialized ──
+if softhsm2-util --show-slots 2>/dev/null | grep -q "Label:.*signing"; then
+    echo "Token 'signing' already exists — skipping initialization."
+    echo "✅ SoftHSM v2 ready (existing token)."
+    exit 0
+fi
+
 # ── Step 1: Initialize the token ──
 echo "[1/5] Initializing SoftHSM token (label=$TOKEN_LABEL)..."
 softhsm2-util --init-token --slot 0 \

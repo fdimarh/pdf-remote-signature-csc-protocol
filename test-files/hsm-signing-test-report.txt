@@ -1,0 +1,90 @@
+╔═══════════════════════════════════════════════════════════╗
+║  HSM (SoftHSM v2 + PKCS#11) Signing Integration Test     ║
+║  Mon Mar  9 17:41:20 WIB 2026                                   ║
+╚═══════════════════════════════════════════════════════════╝
+
+--- Authenticating ---
+  ✅ Got JWT token (151 chars)
+
+════════════════════════════════════════════════════════════
+  Section 1: Server-side signPdf via HSM
+════════════════════════════════════════════════════════════
+--- [1] hsm-pades-bb: PAdES B-B invisible ---
+  Signed PDF:    51298 bytes → /tmp/hsm-signing-test-1773052880/hsm-pades-bb.pdf
+  ⚠️  Validation: ?
+  Response: {
+    "signatureCount": 1,
+    "allValid": true,
+    "signatures": [
+        {
+            "fieldName": "RemoteSignature4237057640",
+            "signerName": "Digital Signature",
+            "signingTime": "D:20260309104120+00'00'",
+            "filter": "Adobe.PPKLite",
+            "subFilter": "ETSI.CAdES.detached",
+--- [2] hsm-pades-bt: PAdES B-T invisible + TSA ---
+  Signed PDF:    51298 bytes → /tmp/hsm-signing-test-1773052880/hsm-pades-bt.pdf
+  ⚠️  Validation: ?
+  Response: {
+    "signatureCount": 1,
+    "allValid": true,
+    "signatures": [
+        {
+            "fieldName": "RemoteSignature2197033232",
+            "signerName": "Digital Signature",
+            "signingTime": "D:20260309104122+00'00'",
+            "filter": "Adobe.PPKLite",
+            "subFilter": "ETSI.CAdES.detached",
+--- [3] hsm-pkcs7: PKCS7 invisible ---
+  Signed PDF:    51298 bytes → /tmp/hsm-signing-test-1773052880/hsm-pkcs7.pdf
+  ⚠️  Validation: ?
+  Response: {
+    "signatureCount": 1,
+    "allValid": true,
+    "signatures": [
+        {
+            "fieldName": "RemoteSignature2506237474",
+            "signerName": "Digital Signature",
+            "signingTime": "D:20260309104123+00'00'",
+            "filter": "Adobe.PPKLite",
+            "subFilter": "ETSI.CAdES.detached",
+--- [4] hsm-pkcs7-tsa: PKCS7 + TSA ---
+  Signed PDF:    51297 bytes → /tmp/hsm-signing-test-1773052880/hsm-pkcs7-tsa.pdf
+  ⚠️  Validation: ?
+  Response: {
+    "signatureCount": 1,
+    "allValid": true,
+    "signatures": [
+        {
+            "fieldName": "RemoteSignature978676568",
+            "signerName": "Digital Signature",
+            "signingTime": "D:20260309104124+00'00'",
+            "filter": "Adobe.PPKLite",
+            "subFilter": "ETSI.CAdES.detached",
+
+════════════════════════════════════════════════════════════
+  Section 2: CSC signDoc via HSM
+════════════════════════════════════════════════════════════
+
+════════════════════════════════════════════════════════════
+  Section 3: CSC signHash via HSM
+════════════════════════════════════════════════════════════
+--- [5] hsm-signhash: signHash PAdES B-B ---
+  ✅ signHash returned CMS signature (6044 chars Base64)
+  CMS/PKCS#7 size:     4532 bytes
+--- [6] hsm-signhash-pkcs7: signHash PKCS7 ---
+  ✅ signHash PKCS7 returned CMS (6044 chars Base64)
+
+╔═══════════════════════════════════════════════════════════╗
+║                     RESULTS                               ║
+╠═══════════════════════════════════════════════════════════╣
+║  Total:  6                                             ║
+║  Passed: 6                                             ║
+║  Failed: 0                                             ║
+╠═══════════════════════════════════════════════════════════╣
+║  Backend: SoftHSM v2 via PKCS#11 (Docker)                ║
+║  Key:     user-key (RSA 3072-bit, Nowina DSS)            ║
+║  Output:  /tmp/hsm-signing-test-1773052880  ║
+╚═══════════════════════════════════════════════════════════╝
+
+🎉 ALL 6 TESTS PASSED — HSM signing verified!

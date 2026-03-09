@@ -86,9 +86,9 @@ impl HsmSigner {
         let token_info = ctx.get_token_info(slot).context("Failed to get token info")?;
         log::info!(
             "PKCS#11 token: label='{}', model='{}', serial='{}'",
-            String::from_utf8_lossy(token_info.label()),
-            String::from_utf8_lossy(token_info.model()),
-            String::from_utf8_lossy(token_info.serial_number()),
+            token_info.label(),
+            token_info.model(),
+            token_info.serial_number(),
         );
 
         // Open a read/write session and login
