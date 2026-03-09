@@ -425,7 +425,8 @@ remote-signature-pdf/
 │       └── Dockerfile                 # Rust server container (HSM mode)
 ├── docs/
 │   ├── openapi.yaml                   # OpenAPI 3.0 specification
-│   └── postman_collection.json        # Postman collection (import-ready)
+│   ├── postman_collection.json        # Postman collection (import-ready)
+│   └── SOFTHSM-GUIDE.md              # SoftHSM operations & troubleshooting ⭐
 ├── certs/
 │   ├── generate_certs.sh              # Generate legacy self-signed certs
 │   ├── ca-cert.pem, ca-key.pem        # Legacy CA
