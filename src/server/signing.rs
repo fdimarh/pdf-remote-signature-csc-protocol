@@ -90,6 +90,7 @@ pub async fn sign_hash_handler(
         // Build CMS with the hash directly as messageDigest (no double-hashing)
         let pki_clone = pki.clone();
         let hash = hash_bytes.clone();
+        let backend = state.backend.clone();
         let cms_opts = CmsSigningOptions {
             signature_format: body.signature_format.to_lowercase(),
             pades_level: body.pades_level.to_uppercase()
@@ -100,7 +101,7 @@ pub async fn sign_hash_handler(
             include_ocsp: body.include_ocsp,
         };
         match tokio::task::spawn_blocking(move || {
-            build_cms_from_hash(&pki_clone, &hash, &cms_opts)
+            build_cms_from_hash(&pki_clone, &hash, &cms_opts, Some(backend.as_ref()))
         }).await {
             Ok(Ok(cms_der)) => signatures.push(b64.encode(&cms_der)),
             Ok(Err(e)) => {
@@ -201,8 +202,9 @@ pub async fn sign_doc_handler(
     let pki_clone = pki.clone();
     let content = content_bytes.clone();
     let cms_opts = cms_options.clone();
+    let backend = state.backend.clone();
     let cms_result = tokio::task::spawn_blocking(move || {
-        build_cms_with_options(&pki_clone, &content, &cms_opts)
+        build_cms_with_options(&pki_clone, &content, &cms_opts, Some(backend.as_ref()))
     }).await;
 
     match cms_result {
@@ -285,11 +287,9 @@ fn build_cms_from_hash(
     pki: &crate::server::pki::PkiState,
     hash: &[u8], // 32-byte SHA-256 hash of the original byte-range content
     options: &CmsSigningOptions,
+    backend: Option<&dyn crate::server::pki_backend::PkiBackend>,
 ) -> Result<Vec<u8>, String> {
     use signature::Signer;
-
-    let key_pair = InMemorySigningKeyPair::from_pkcs8_der(&pki.user_key_der)
-        .map_err(|e| format!("Failed to load signing key: {}", e))?;
 
     let user_cert = CapturedX509Certificate::from_der(pki.user_cert_der.clone())
         .map_err(|e| format!("Failed to parse user cert: {}", e))?;
@@ -409,11 +409,20 @@ fn build_cms_from_hash(
     // For signing, the signed attributes are DER-encoded as a SET (tag 0x31)
     let signed_attrs_for_sig = der_tlv(0x31, &attrs_content);
 
-    // Sign the DER-encoded signed attributes using the signature::Signer trait
-    let sig = key_pair
-        .try_sign(&signed_attrs_for_sig)
-        .map_err(|e| format!("RSA signing failed: {}", e))?;
-    let signature_bytes: Vec<u8> = sig.into();
+    // Sign the DER-encoded signed attributes
+    let signature_bytes: Vec<u8> = if let Some(be) = backend {
+        // HSM or other backend: delegate signing
+        be.sign_data(&signed_attrs_for_sig)
+            .map_err(|e| format!("Backend signing failed: {}", e))?
+    } else {
+        // PEM in-memory: use InMemorySigningKeyPair
+        let key_pair = InMemorySigningKeyPair::from_pkcs8_der(&pki.user_key_der)
+            .map_err(|e| format!("Failed to load signing key: {}", e))?;
+        let sig = key_pair
+            .try_sign(&signed_attrs_for_sig)
+            .map_err(|e| format!("RSA signing failed: {}", e))?;
+        sig.into()
+    };
 
     // ── Build unsigned attributes (TSA timestamp) ──
     let unsigned_attrs_content = if include_timestamp {
@@ -683,7 +692,22 @@ pub(crate) fn build_cms_with_options(
     pki: &crate::server::pki::PkiState,
     content_bytes: &[u8],
     options: &CmsSigningOptions,
+    backend: Option<&dyn crate::server::pki_backend::PkiBackend>,
 ) -> Result<Vec<u8>, String> {
+    // If the backend has no extractable key (HSM mode), compute hash and
+    // delegate to build_cms_from_hash which supports backend signing.
+    if let Some(be) = backend {
+        if be.user_key_der().is_none() {
+            log::info!("HSM backend detected — routing signDoc through hash-based CMS builder");
+            let hash = {
+                let mut hasher = Sha256::new();
+                hasher.update(content_bytes);
+                hasher.finalize().to_vec()
+            };
+            return build_cms_from_hash(pki, &hash, options, Some(be));
+        }
+    }
+
     let key_pair = InMemorySigningKeyPair::from_pkcs8_der(&pki.user_key_der)
         .map_err(|e| format!("Failed to load signing key: {}", e))?;
 
@@ -952,8 +976,9 @@ pub async fn sign_doc_form_handler(
     let pki_clone = state.pki.clone();
     let content = content_bytes.clone();
     let cms_opts = cms_options.clone();
+    let backend = state.backend.clone();
     let cms_result = tokio::task::spawn_blocking(move || {
-        build_cms_with_options(&pki_clone, &content, &cms_opts)
+        build_cms_with_options(&pki_clone, &content, &cms_opts, Some(backend.as_ref()))
     }).await;
 
     match cms_result {

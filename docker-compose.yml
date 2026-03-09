@@ -1,0 +1,71 @@
+# ═══════════════════════════════════════════════════════════════
+# Docker Compose — Remote Signature PDF with SoftHSM v2
+# ═══════════════════════════════════════════════════════════════
+#
+# Services:
+#   softhsm   — SoftHSM v2 container with pre-initialized PKCS#11 tokens
+#   server    — The Rust signing server in HSM mode
+#
+# Usage:
+#   # Build and start everything
+#   docker compose up --build
+#
+#   # Start only SoftHSM (for local Rust dev against the token store)
+#   docker compose up softhsm --build
+#
+#   # Then run the server locally with HSM backend:
+#   SOFTHSM2_CONF=docker/softhsm/softhsm2.conf \
+#   cargo run -- server --port 8080 \
+#     --pki-backend hsm \
+#     --pkcs11-lib /path/to/libsofthsm2.so \
+#     --hsm-slot 0 --hsm-pin 1234 --hsm-key-label user-key
+#
+# ═══════════════════════════════════════════════════════════════
+
+services:
+  # SoftHSM v2 — PKCS#11 software HSM
+  softhsm:
+    build:
+      context: .
+      dockerfile: docker/softhsm/Dockerfile
+    container_name: softhsm-signing
+    volumes:
+      # Share token store with the signing server
+      - hsm-tokens:/var/lib/softhsm/tokens
+    restart: unless-stopped
+
+  # Signing server (HSM mode)
+  # NOTE: For the prototype, you can also run the server locally
+  # and just mount the SoftHSM token directory + library.
+  server:
+    build:
+      context: .
+      dockerfile: docker/server/Dockerfile
+    container_name: signing-server
+    ports:
+      - "8080:8080"
+    environment:
+      - RUST_LOG=info
+      - SOFTHSM2_CONF=/etc/softhsm2.conf
+    volumes:
+      # Mount token store from SoftHSM container
+      - hsm-tokens:/var/lib/softhsm/tokens:ro
+      # Mount certificates (still needed for CA chain in cert responses)
+      - ./certs/nowina:/opt/certs:ro
+    depends_on:
+      - softhsm
+    command: >
+      /app/remote-signature-pdf server
+        --port 8080 --host 0.0.0.0
+        --pki-backend hsm
+        --pkcs11-lib /usr/lib/softhsm/libsofthsm2.so
+        --hsm-slot 0
+        --hsm-pin 1234
+        --hsm-key-label user-key
+        --cert-dir /opt/certs
+    restart: unless-stopped
+
+volumes:
+  hsm-tokens:
+    driver: local
+

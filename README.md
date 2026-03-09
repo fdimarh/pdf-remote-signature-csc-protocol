@@ -20,6 +20,8 @@ The **server** acts as a PKI / Trust Service Provider (TSP) managing X.509 certi
 - **Multi-Level Certificate Chains** — Supports 2-level (self-signed) and 3-level (Nowina DSS) PKI chains
 - **TSA Timestamp Support** — Integrates with external Timestamp Authorities (e.g., DigiCert) for B-T/B-LT/B-LTA levels
 - **Form-Data Upload** — All signing/validation endpoints support `multipart/form-data` with binary PDF response
+- **PKCS#11 / HSM Support** — Swappable PKI backend: PEM files (dev) or SoftHSM v2 via PKCS#11 (prototype/prod)
+- **Docker Compose** — SoftHSM v2 container + signing server, pre-initialized tokens with test certificates
 - **OpenAPI 3.0 Spec** — Machine-readable API spec at `docs/openapi.yaml`
 - **Postman Collection** — Ready-to-use collection at `docs/postman_collection.json`
 - **134 Automated Tests** — Comprehensive test suite covering all signing variants (signDoc + signHash), validation, and verification
@@ -51,8 +53,11 @@ The **server** acts as a PKI / Trust Service Provider (TSP) managing X.509 certi
 │  /api/v1/signPdf           — Full server-side signing ⭐       │
 │  /api/v1/validate          — Validate signed PDF              │
 │                                                               │
-│  PKI Backend: Nowina DSS 3-level chain (default)              │
+│  PKI Backend: Nowina DSS 3-level chain (default PEM)           │
 │  CN=good-user-crl-ocsp → CN=good-ca → CN=root-ca             │
+│                                                               │
+│  HSM Backend (optional): SoftHSM v2 via PKCS#11               │
+│  Private key stays inside the HSM — never exported             │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -74,11 +79,28 @@ cargo build
 ### 1. Start the Server
 
 ```bash
-# Uses Nowina DSS 3-level PKI chain by default
+# Uses Nowina DSS 3-level PKI chain by default (PEM backend)
 cargo run -- server --port 8080
 
 # Or use legacy self-signed certs:
 cargo run -- server --cert-dir ./certs --port 8080
+
+# With HSM backend (requires SoftHSM v2 + --features hsm):
+cargo build --features hsm
+cargo run --features hsm -- server --port 8080 \
+  --pki-backend hsm \
+  --pkcs11-lib /usr/lib/softhsm/libsofthsm2.so \
+  --hsm-slot 0 --hsm-pin 1234 --hsm-key-label user-key
+```
+
+### 1b. Docker (SoftHSM v2)
+
+```bash
+# Build and start SoftHSM + signing server
+docker compose up --build
+
+# Or just SoftHSM (for local Rust dev against the token store):
+docker compose up softhsm --build
 ```
 
 ### 2. Sign a PDF
@@ -393,6 +415,14 @@ remote-signature-pdf/
 ├── LICENSE                            # MIT License
 ├── README.md
 ├── PLAN.md                            # Detailed architecture & API reference
+├── docker-compose.yml                 # SoftHSM + signing server ⭐
+├── docker/
+│   ├── softhsm/
+│   │   ├── Dockerfile                 # SoftHSM v2 container
+│   │   ├── init-hsm.sh               # Token init + key/cert import
+│   │   └── softhsm2.conf             # SoftHSM config
+│   └── server/
+│       └── Dockerfile                 # Rust server container (HSM mode)
 ├── docs/
 │   ├── openapi.yaml                   # OpenAPI 3.0 specification
 │   └── postman_collection.json        # Postman collection (import-ready)
@@ -412,10 +442,12 @@ remote-signature-pdf/
 │   │   ├── app.rs                      # Actix-web app setup & routing
 │   │   ├── auth.rs                     # JWT authentication
 │   │   ├── credentials.rs              # Credential listing & cert chain
+│   │   ├── hsm.rs                      # PKCS#11 HSM signer (feature: hsm) ⭐
 │   │   ├── info.rs                     # Service metadata
 │   │   ├── ltv.rs                      # CRL/OCSP/DSS/timestamp (LTV pipeline) ⭐
 │   │   ├── multipart.rs               # Form-data upload helper utilities
 │   │   ├── pki.rs                      # PKI loading (multi-level chain support)
+│   │   ├── pki_backend.rs             # PkiBackend trait (PEM vs HSM) ⭐
 │   │   ├── signing.rs                  # signHash & signDoc (JSON + form-data)
 │   │   ├── sign_pdf.rs                # signPdf (JSON + form-data, binary response)
 │   │   └── validation.rs              # Validate (JSON + form-data)
@@ -455,9 +487,14 @@ Commands:
 
 ```
 Options:
-  --cert-dir <DIR>    Certificate directory [default: ./certs/nowina]
-  --host <HOST>       Bind address [default: 127.0.0.1]
-  --port <PORT>       Listen port [default: 8080]
+  --cert-dir <DIR>        Certificate directory [default: ./certs/nowina]
+  --host <HOST>           Bind address [default: 127.0.0.1]
+  --port <PORT>           Listen port [default: 8080]
+  --pki-backend <MODE>    "pem" (default) or "hsm" (PKCS#11)
+  --pkcs11-lib <PATH>     Path to PKCS#11 .so library (HSM mode)
+  --hsm-slot <INDEX>      Token slot index [default: 0]
+  --hsm-pin <PIN>         User PIN for the PKCS#11 token
+  --hsm-key-label <NAME>  Private key label in the token [default: user-key]
 ```
 
 ### `sign`

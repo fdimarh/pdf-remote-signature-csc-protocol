@@ -95,7 +95,7 @@ pub async fn sign_pdf_handler(
     };
 
     let (signed_pdf, sig_format, pades_level_resp, has_visible) =
-        match execute_sign_pdf(&params, &state.pki, &claims.sub).await {
+        match execute_sign_pdf(&params, &state.pki, &claims.sub, &state).await {
             Ok(result) => result,
             Err(resp) => return resp,
         };
@@ -140,6 +140,7 @@ async fn execute_sign_pdf(
     params: &SignPdfParams,
     pki: &crate::server::pki::PkiState,
     username: &str,
+    state: &web::Data<AppState>,
 ) -> Result<(Vec<u8>, String, Option<String>, bool), HttpResponse> {
     // Build visible signature config
     let visible_config = if let Some(ref img_bytes) = params.image_bytes {
@@ -212,8 +213,9 @@ async fn execute_sign_pdf(
     let pki_clone = pki.clone();
     let content = prepared.content_to_sign.clone();
     let cms_opts = cms_options.clone();
+    let backend = state.backend.clone();
     let cms_der = match tokio::task::spawn_blocking(move || {
-        build_cms_with_options(&pki_clone, &content, &cms_opts)
+        build_cms_with_options(&pki_clone, &content, &cms_opts, Some(backend.as_ref()))
     })
     .await
     {
@@ -526,7 +528,7 @@ pub async fn sign_pdf_form_handler(
     };
 
     let (signed_pdf, sig_format, pades_level_resp, has_visible) =
-        match execute_sign_pdf(&params, &state.pki, &claims.sub).await {
+        match execute_sign_pdf(&params, &state.pki, &claims.sub, &state).await {
             Ok(result) => result,
             Err(resp) => return resp,
         };

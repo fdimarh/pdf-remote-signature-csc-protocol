@@ -55,3 +55,11 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg"]
 # PDF (existing library as path dependency)
 pdf_signing = { path = "../rust_pdf_signing" }
 lopdf = { version = "0.39", features = ["chrono"], default-features = false }
+
+# HSM / PKCS#11 (optional — enabled with `--features hsm`)
+cryptoki = { version = "0.7", optional = true }
+
+[features]
+default = []
+hsm = ["cryptoki"]
+

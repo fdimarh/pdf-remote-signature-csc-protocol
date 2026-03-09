@@ -854,11 +854,37 @@ remote-signature-pdf/
 39. ✅ **Verified output sizes**: B-LT ~61KB (with DSS), B-LTA ~91KB (with DSS + doc timestamp)
     - **Total: 134 tests — all passing ✅**
 
-### Phase 11: Future Enhancements (Optional)
+### Phase 11: SoftHSM v2 PKCS#11 Integration ✅
+**Goal:** Swappable PKI backend — private keys in PKCS#11 HSM instead of PEM files
+
+40. ✅ **Docker infrastructure**:
+    - `docker/softhsm/Dockerfile` — Alpine + SoftHSM2 + OpenSC, pre-initialized token
+    - `docker/softhsm/init-hsm.sh` — Imports Nowina RSA 3072-bit key + certs via `pkcs11-tool`
+    - `docker/server/Dockerfile` — Rust release build with `--features hsm`
+    - `docker-compose.yml` — Two services: `softhsm` + `server` with shared token volume
+41. ✅ **`cryptoki` dependency** behind `hsm` feature flag (`Cargo.toml`)
+42. ✅ **`src/server/hsm.rs`** — `HsmSigner` struct:
+    - Opens PKCS#11 session, authenticates, finds private key by label
+    - `sign()` — CKM_SHA256_RSA_PKCS (HSM hashes + signs internally)
+    - `sign_hash_raw()` — CKM_RSA_PKCS with DigestInfo (pre-hashed input)
+    - Thread-safe via `Mutex<Session>` for `spawn_blocking` usage
+43. ✅ **`src/server/pki_backend.rs`** — `PkiBackend` trait:
+    - Uniform interface: `sign_data()`, `user_cert_der()`, `ca_chain_der()`, etc.
+    - `PemBackend` — wraps existing `PkiState` + `InMemorySigningKeyPair`
+    - `HsmBackend` — wraps `HsmSigner` + PEM certs (public data from files)
+44. ✅ **Refactored `AppState`** to hold `Arc<dyn PkiBackend>`:
+    - `run_server_with_backend()` accepts optional backend parameter
+    - `build_cms_from_hash()` delegates to backend when available
+    - `build_cms_with_options()` routes through hash-based CMS for HSM mode
+45. ✅ **CLI arguments** for HSM mode:
+    - `--pki-backend hsm` / `--pkcs11-lib` / `--hsm-slot` / `--hsm-pin` / `--hsm-key-label`
+    - Graceful error when `hsm` feature not compiled
+
+### Phase 12: Future Enhancements (Optional)
 - Multiple signers / serial signing
 - Credential authorization (SAD flow)
 - WebSocket for long-running signing operations
-- PKCS#11 / HSM integration for production key management
+- Hardware HSM support (Thales Luna, AWS CloudHSM) via same PKCS#11 interface
 
 ---
 
@@ -878,6 +904,9 @@ remote-signature-pdf/
 | Signature Placeholder | 50,000 hex chars | Accommodates CMS + CRL + OCSP revocation data |
 | signHash CMS | Manual DER construction | Library always double-hashes; manual build uses hash directly as messageDigest |
 | Client DSS/Timestamp | Post-CMS incremental update | Client appends DSS + doc-timestamp after embedding CMS for B-LT/B-LTA |
+| HSM Backend | SoftHSM v2 via `cryptoki` | PKCS#11 industry standard; same code works with hardware HSMs |
+| PKI Abstraction | `PkiBackend` trait | Swappable: PEM (dev) vs HSM (prototype/prod) without changing handlers |
+| HSM Threading | `Mutex<Session>` | PKCS#11 sessions aren't Send; Mutex + spawn_blocking is safe |
 | Form-Data | `actix-multipart` | Direct file upload, no Base64 encoding needed |
 
 ---

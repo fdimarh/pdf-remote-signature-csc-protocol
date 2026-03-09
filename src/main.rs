@@ -56,6 +56,27 @@ enum Commands {
         /// Port to listen on
         #[arg(long, default_value_t = 8080)]
         port: u16,
+
+        /// PKI backend: "pem" (default) or "hsm" (PKCS#11)
+        #[arg(long, default_value = "pem")]
+        pki_backend: String,
+
+        /// Path to PKCS#11 shared library (for HSM backend)
+        /// e.g., /usr/lib/softhsm/libsofthsm2.so
+        #[arg(long)]
+        pkcs11_lib: Option<String>,
+
+        /// PKCS#11 token slot index (for HSM backend)
+        #[arg(long, default_value_t = 0)]
+        hsm_slot: usize,
+
+        /// PKCS#11 user PIN (for HSM backend)
+        #[arg(long)]
+        hsm_pin: Option<String>,
+
+        /// Label of the private key in the HSM token
+        #[arg(long, default_value = "user-key")]
+        hsm_key_label: String,
     },
 
     /// Sign a PDF document using the remote CSC server
@@ -218,11 +239,50 @@ async fn main() -> anyhow::Result<()> {
             cert_dir,
             host,
             port,
+            pki_backend,
+            pkcs11_lib,
+            hsm_slot,
+            hsm_pin,
+            hsm_key_label,
         } => {
             log::info!("Starting CSC signing server...");
             log::info!("  Certificate dir: {:?}", cert_dir);
+            log::info!("  PKI backend:     {}", pki_backend);
             log::info!("  Listening on:    {}:{}", host, port);
-            server::app::run_server(&cert_dir, &host, port).await?;
+
+            let backend: Option<std::sync::Arc<dyn server::pki_backend::PkiBackend>> =
+                match pki_backend.as_str() {
+                    "hsm" | "pkcs11" => {
+                        #[cfg(feature = "hsm")]
+                        {
+                            let lib = pkcs11_lib.as_deref().unwrap_or(
+                                "/usr/lib/softhsm/libsofthsm2.so",
+                            );
+                            let pin = hsm_pin.as_deref().unwrap_or("1234");
+                            log::info!("  PKCS#11 lib:     {}", lib);
+                            log::info!("  HSM slot:        {}", hsm_slot);
+                            log::info!("  HSM key label:   {}", hsm_key_label);
+                            let hsm_backend = server::pki_backend::HsmBackend::new(
+                                lib,
+                                hsm_slot,
+                                pin,
+                                &hsm_key_label,
+                                &cert_dir,
+                            )
+                            .expect("Failed to initialize HSM backend");
+                            Some(std::sync::Arc::new(hsm_backend))
+                        }
+                        #[cfg(not(feature = "hsm"))]
+                        {
+                            eprintln!("ERROR: HSM backend requires the 'hsm' feature.");
+                            eprintln!("  Rebuild with: cargo build --features hsm");
+                            std::process::exit(1);
+                        }
+                    }
+                    "pem" | _ => None, // Will use PEM backend as default
+                };
+
+            server::app::run_server_with_backend(&cert_dir, &host, port, backend).await?;
         }
 
         Commands::Sign {
