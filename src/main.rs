@@ -141,6 +141,25 @@ enum Commands {
         /// Trade-off: Produces a simplified CMS signature (PAdES B-B equivalent).
         #[arg(long, default_value_t = false)]
         use_sign_hash: bool,
+
+        /// Tag mode: text marker to locate in the PDF content stream (e.g., "#SIGN_HERE").
+        /// When set, the visible signature is positioned relative to this tag.
+        /// Requires --image to be set for a visible signature.
+        #[arg(long)]
+        sig_tag: Option<String>,
+
+        /// Tag mode: width of the signature box in PDF points (default: 200)
+        #[arg(long)]
+        sig_tag_width: Option<f64>,
+
+        /// Tag mode: height of the signature box in PDF points (default: 70)
+        #[arg(long)]
+        sig_tag_height: Option<f64>,
+
+        /// Tag mode: placement relative to the tag text.
+        /// "in_front" (default) = right of tag, "overlay" = on top of tag.
+        #[arg(long)]
+        sig_tag_mode: Option<String>,
     },
 
     /// Verify a signed PDF document (local validation using pdf_signing library)
@@ -222,6 +241,22 @@ enum Commands {
         /// Display name for the signer
         #[arg(long, default_value = "Digital Signature")]
         signer_name: String,
+
+        /// Tag mode: text marker to locate in the PDF (e.g., "#SIGN_HERE").
+        #[arg(long)]
+        sig_tag: Option<String>,
+
+        /// Tag mode: width of the signature box in PDF points (default: 200)
+        #[arg(long)]
+        sig_tag_width: Option<f64>,
+
+        /// Tag mode: height of the signature box in PDF points (default: 70)
+        #[arg(long)]
+        sig_tag_height: Option<f64>,
+
+        /// Tag mode: placement mode ("in_front" or "overlay")
+        #[arg(long)]
+        sig_tag_mode: Option<String>,
     },
 }
 
@@ -300,13 +335,26 @@ async fn main() -> anyhow::Result<()> {
             include_crl,
             include_ocsp,
             use_sign_hash,
+            sig_tag,
+            sig_tag_width,
+            sig_tag_height,
+            sig_tag_mode,
         } => {
             log::info!("Starting remote PDF signing...");
             log::info!("  Format: {}, Level: {}", format, level);
+            if sig_tag.is_some() {
+                log::info!("  Tag mode: {:?}", sig_tag);
+            }
 
             // Parse visible signature config if --image is provided
             let visible_config = if let Some(image_path) = image {
-                let rect = parse_rect(&sig_rect)?;
+                let rect = if sig_tag.is_none() {
+                    parse_rect(&sig_rect)?
+                } else {
+                    // In tag mode, sig_rect is just a placeholder — tag resolution
+                    // will override it with the actual position.
+                    [0.0, 0.0, 0.0, 0.0]
+                };
                 log::info!(
                     "  Visible signature: image={:?}, page={}, rect={:?}",
                     image_path,
@@ -330,6 +378,10 @@ async fn main() -> anyhow::Result<()> {
                 include_crl,
                 include_ocsp,
                 use_sign_hash,
+                sig_tag,
+                sig_tag_width,
+                sig_tag_height,
+                sig_tag_mode,
             };
 
             client::workflow::sign_pdf(
@@ -540,9 +592,16 @@ async fn main() -> anyhow::Result<()> {
             sig_page,
             sig_rect,
             signer_name,
+            sig_tag,
+            sig_tag_width,
+            sig_tag_height,
+            sig_tag_mode,
         } => {
             log::info!("Starting server-side PDF signing...");
             log::info!("  Format: {}, Level: {}", format, level);
+            if sig_tag.is_some() {
+                log::info!("  Tag mode: {:?}", sig_tag);
+            }
 
             // Read PDF file
             let pdf_bytes = std::fs::read(&input)
@@ -590,6 +649,10 @@ async fn main() -> anyhow::Result<()> {
                     &format.to_lowercase(),
                     &level.to_uppercase(),
                     tsa_url.as_deref(),
+                    sig_tag.as_deref(),
+                    sig_tag_width,
+                    sig_tag_height,
+                    sig_tag_mode.as_deref(),
                 )
                 .await?;
 

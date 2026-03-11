@@ -17,6 +17,9 @@ use crate::client::pdf_finalizer;
 use crate::client::pdf_preparer;
 use crate::client::pdf_preparer::VisibleSignatureConfig;
 
+// lopdf re-exported from pdf_signing for tag mode resolution
+use pdf_signing::lopdf;
+
 /// Signing options passed from CLI
 pub struct SignOptions {
     pub signature_format: String,
@@ -30,6 +33,14 @@ pub struct SignOptions {
     pub include_ocsp: bool,
     /// Use CSC signHash instead of signDoc (bandwidth-efficient, simplified CMS)
     pub use_sign_hash: bool,
+    /// Tag mode: text marker to locate in the PDF content stream for signature placement
+    pub sig_tag: Option<String>,
+    /// Tag mode: width of the visible signature box (in PDF points)
+    pub sig_tag_width: Option<f64>,
+    /// Tag mode: height of the visible signature box (in PDF points)
+    pub sig_tag_height: Option<f64>,
+    /// Tag mode: placement mode ("in_front" or "overlay")
+    pub sig_tag_mode: Option<String>,
 }
 
 impl Default for SignOptions {
@@ -42,6 +53,10 @@ impl Default for SignOptions {
             include_crl: false,
             include_ocsp: false,
             use_sign_hash: false,
+            sig_tag: None,
+            sig_tag_width: None,
+            sig_tag_height: None,
+            sig_tag_mode: None,
         }
     }
 }
@@ -96,14 +111,69 @@ pub async fn sign_pdf(
 
     // ── Step 5: Prepare the PDF ──
     log::info!("Preparing PDF for signing...");
-    if sign_options.visible_signature.is_some() {
+
+    // Handle tag mode: resolve tag to rect, then use standard pipeline
+    let effective_visible_config = if let Some(ref tag) = sign_options.sig_tag {
+        log::info!("  Tag mode: resolving tag '{}' to signature rect", tag);
+
+        let tag_width = sign_options.sig_tag_width.unwrap_or(200.0);
+        let tag_height = sign_options.sig_tag_height.unwrap_or(70.0);
+        let anchor_mode = match sign_options.sig_tag_mode.as_deref() {
+            Some("overlay") => pdf_signing::signature_options::SignatureAnchorMode::Overlay,
+            _ => pdf_signing::signature_options::SignatureAnchorMode::InFront,
+        };
+
+        // Load the PDF to resolve the tag position
+        let pdf_bytes_for_tag = std::fs::read(input_path)
+            .context("Failed to read input PDF for tag resolution")?;
+        let doc = lopdf::Document::load_mem(&pdf_bytes_for_tag)
+            .context("Failed to parse PDF for tag resolution")?;
+
+        let sig_page = sign_options.visible_signature.as_ref().map(|vc| vc.page).unwrap_or(1);
+        let page_id = {
+            let pages = doc.get_pages();
+            *pages.get(&sig_page)
+                .ok_or_else(|| anyhow::anyhow!("Page {} not found in PDF", sig_page))?
+        };
+
+        let rect = pdf_signing::signature_anchor::resolve_rect_from_tag(
+            &doc,
+            page_id,
+            tag,
+            &anchor_mode,
+            tag_width,
+            tag_height,
+        ).map_err(|e| anyhow::anyhow!("Failed to resolve tag '{}': {:?}", tag, e))?;
+
+        log::info!(
+            "  Tag '{}' resolved to rect: [{:.1}, {:.1}, {:.1}, {:.1}] (mode={:?})",
+            tag, rect.x1, rect.y1, rect.x2, rect.y2, anchor_mode,
+        );
+
+        // Build visible signature config from the resolved rect
+        if let Some(ref vc) = sign_options.visible_signature {
+            Some(VisibleSignatureConfig {
+                image_path: vc.image_path.clone(),
+                page: vc.page,
+                rect: [rect.x1 as f32, rect.y1 as f32, rect.x2 as f32, rect.y2 as f32],
+            })
+        } else {
+            // Tag mode without image — still visible but using default image
+            log::warn!("  Tag mode without --image: signature will be invisible (no image provided)");
+            None
+        }
+    } else {
+        sign_options.visible_signature.clone()
+    };
+
+    if effective_visible_config.is_some() {
         log::info!("  Visible signature: enabled (with image)");
     }
     let signer_name = &cred_info.cert.subject_dn;
     let prepared = pdf_preparer::prepare_pdf_for_signing(
         input_path,
         signer_name,
-        sign_options.visible_signature.as_ref(),
+        effective_visible_config.as_ref(),
     )?;
     log::info!(
         "PDF prepared: {} bytes, hash={}",

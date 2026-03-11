@@ -485,6 +485,55 @@ Get certificate chain and key info for a credential.
 | `timestampUrl` | | `null` | TSA URL for B-T/B-LT/B-LTA |
 | `includeCrl` | | `false` | Embed CRL data |
 | `includeOcsp` | | `false` | Embed OCSP data |
+| `sigTag` | | `null` | Text marker for tag-based anchor placement (e.g., `"#SIGN_HERE"`) |
+| `sigTagWidth` | | `200` | Width of the signature box in PDF points (tag mode) |
+| `sigTagHeight` | | `70` | Height of the signature box in PDF points (tag mode) |
+| `sigTagMode` | | `"in_front"` | `"in_front"` (right of tag) or `"overlay"` (on top of tag) |
+
+#### Tag Mode (Anchor-Based Placement)
+
+When `sigTag` is set, the server scans the PDF content stream for the specified
+text marker and positions the visible signature relative to it. This eliminates
+the need for the client to compute exact `sigRect` coordinates.
+
+**How it works:**
+1. The PDF must contain the tag text (e.g., `#SIGN_HERE`) rendered on a page
+2. The server parses the page's content stream operators (`BT`, `Tm`, `Td`, `Tj`, `TJ`)
+3. It computes the tag's position using Helvetica glyph metrics
+4. The signature box is placed either:
+   - `in_front`: to the right of the tag text
+   - `overlay`: directly on top of the tag text
+
+**Tag mode example (JSON):**
+```json
+{
+  "credentialID": "credential-001",
+  "pdfContent": "<base64-PDF-with-#SIGN_HERE-marker>",
+  "imageContent": "<base64-signature-image>",
+  "sigTag": "#SIGN_HERE",
+  "sigTagWidth": 200,
+  "sigTagHeight": 70,
+  "sigTagMode": "in_front",
+  "signatureFormat": "pades",
+  "padesLevel": "B-B"
+}
+```
+
+**Tag mode example (form-data):**
+```sh
+curl -X POST http://localhost:8080/api/v1/signPdf/form \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@document-with-tag.pdf" \
+  -F "image=@signature.png" \
+  -F "sigTag=#SIGN_HERE" \
+  -F "sigTagWidth=200" \
+  -F "sigTagHeight=70" \
+  -F "sigTagMode=in_front" \
+  -o signed.pdf
+```
+
+**Note:** When `sigTag` is set, `sigRect` is optional (the tag determines position).
+If the tag is not found in the PDF, an HTTP 400 error is returned.
 
 **Response:**
 ```json

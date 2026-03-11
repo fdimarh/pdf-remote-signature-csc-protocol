@@ -34,6 +34,22 @@ pub struct VisibleSignatureConfigBytes {
     pub rect: [f32; 4],
 }
 
+/// Configuration for tag-based (anchor) signature placement.
+/// The signature is placed relative to a text marker found in the PDF content stream.
+#[derive(Debug, Clone)]
+pub struct TagSignatureConfig {
+    /// The text marker to locate (e.g., "#SIGN_HERE")
+    pub tag: String,
+    /// Width of the signature box in PDF points (default: 200)
+    pub width: f64,
+    /// Height of the signature box in PDF points (default: 70)
+    pub height: f64,
+    /// Placement mode: "in_front" (right of tag) or "overlay" (on top of tag)
+    pub mode: String,
+    /// Page number (1-based) where the tag is expected
+    pub page: u32,
+}
+
 /// Result of preparing a PDF for remote signing.
 pub struct PreparedPdf {
     /// The serialized PDF bytes (with placeholder Contents)

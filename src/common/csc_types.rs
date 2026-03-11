@@ -372,7 +372,8 @@ pub struct SignPdfRequest {
     /// Optional Base64-encoded signature image (PNG or JPEG) for visible signatures
     #[serde(rename = "imageContent", skip_serializing_if = "Option::is_none")]
     pub image_content: Option<String>,
-    /// Signature rectangle [x1, y1, x2, y2] in PDF points (required when image is provided)
+    /// Signature rectangle [x1, y1, x2, y2] in PDF points (required when image is provided
+    /// and sigTag is not set)
     #[serde(rename = "sigRect", skip_serializing_if = "Option::is_none")]
     pub sig_rect: Option<[f32; 4]>,
     /// Page number for the visible signature (1-based, default: 1)
@@ -396,6 +397,26 @@ pub struct SignPdfRequest {
     /// Include OCSP in CMS
     #[serde(rename = "includeOcsp", default)]
     pub include_ocsp: bool,
+
+    // ── Tag Mode (anchor-based signature placement) ──
+    /// Text marker tag to locate in the PDF content stream (e.g., "#SIGN_HERE").
+    /// When set, the visible signature is positioned relative to this tag
+    /// instead of using sigRect coordinates.
+    #[serde(rename = "sigTag", skip_serializing_if = "Option::is_none")]
+    pub sig_tag: Option<String>,
+    /// Width of the visible signature box when using tag mode (in PDF points).
+    /// Default: 200.0
+    #[serde(rename = "sigTagWidth", skip_serializing_if = "Option::is_none")]
+    pub sig_tag_width: Option<f64>,
+    /// Height of the visible signature box when using tag mode (in PDF points).
+    /// Default: 70.0
+    #[serde(rename = "sigTagHeight", skip_serializing_if = "Option::is_none")]
+    pub sig_tag_height: Option<f64>,
+    /// Placement mode for tag-based anchoring:
+    /// - "in_front" (default): signature box is placed to the right of the tag text
+    /// - "overlay": signature box is placed directly on top of the tag text
+    #[serde(rename = "sigTagMode", skip_serializing_if = "Option::is_none")]
+    pub sig_tag_mode: Option<String>,
 }
 
 fn default_page() -> u32 {
@@ -421,6 +442,9 @@ pub struct SignPdfResponse {
     /// Whether a visible signature image was embedded
     #[serde(rename = "hasVisibleSignature")]
     pub has_visible_signature: bool,
+    /// Whether tag mode was used for signature placement
+    #[serde(rename = "tagMode", skip_serializing_if = "Option::is_none")]
+    pub tag_mode: Option<bool>,
 }
 
 // ──────────────────── Error Response ────────────────────────

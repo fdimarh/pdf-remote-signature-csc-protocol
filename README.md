@@ -16,6 +16,7 @@ The **server** acts as a PKI / Trust Service Provider (TSP) managing X.509 certi
 - **LTV / Long-Term Validation** — CRL/OCSP revocation data embedded in CMS, DSS dictionary appended to PDF, document timestamps for B-LTA
 - **PKCS7 LTV Support** — `--include-crl` / `--include-ocsp` flags for embedding revocation data in PKCS#7 signatures
 - **Visible Signatures** — Embed a PNG/JPEG image as a visible signature on any page (client-side or server-side rendering)
+- **Tag Mode Signing** — Anchor-based placement: locate a text marker (e.g., `#SIGN_HERE`) in the PDF and position the signature relative to it. Supports `in_front` and `overlay` modes.
 - **Comprehensive Validation** — 20+ cryptographic and structural checks (digest, chain, ByteRange, wrapping attacks, MDP, LTV)
 - **Multi-Level Certificate Chains** — Supports 2-level (self-signed) and 3-level (Nowina DSS) PKI chains
 - **TSA Timestamp Support** — Integrates with external Timestamp Authorities (e.g., DigiCert) for B-T/B-LT/B-LTA levels
@@ -181,6 +182,40 @@ cargo run -- sign-remote \
   --server-url http://localhost:8080 \
   --input test-files/sample.pdf \
   --output signed-server.pdf
+```
+
+**Tag mode signing** (anchor-based placement using text markers):
+
+```bash
+# Tag mode: signature placed to the right of "#SIGN_HERE" in the PDF
+cargo run -- sign-remote \
+  --server-url http://localhost:8080 \
+  --input test-files/sample-tag-sign.pdf \
+  --output signed-tag.pdf \
+  --image test-files/signature-image.png \
+  --sig-tag "#SIGN_HERE" \
+  --sig-tag-width 200 \
+  --sig-tag-height 70 \
+  --signer-name "John Doe"
+
+# Tag mode with overlay placement (on top of the tag)
+cargo run -- sign-remote \
+  --server-url http://localhost:8080 \
+  --input test-files/sample-tag-sign.pdf \
+  --output signed-tag-overlay.pdf \
+  --image test-files/signature-image.png \
+  --sig-tag "#SIGN_HERE" \
+  --sig-tag-mode overlay
+
+# Tag mode via form-data (curl)
+curl -X POST http://localhost:8080/api/v1/signPdf/form \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@test-files/sample-tag-sign.pdf" \
+  -F "image=@test-files/signature-image.png" \
+  -F "sigTag=#SIGN_HERE" \
+  -F "sigTagWidth=200" \
+  -F "sigTagHeight=70" \
+  -o signed-tag.pdf
 ```
 
 ### 3. Verify a Signed PDF

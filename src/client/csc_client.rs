@@ -273,6 +273,10 @@ impl CscClient {
     ///
     /// The server handles: preparation, visible image embedding,
     /// hash computation, CMS signing, and signature embedding.
+    ///
+    /// Supports tag mode: when `sig_tag` is set, the server locates the
+    /// text marker in the PDF and positions the signature there.
+    #[allow(clippy::too_many_arguments)]
     pub async fn sign_pdf_remote(
         &self,
         credential_id: &str,
@@ -284,6 +288,10 @@ impl CscClient {
         signature_format: &str,
         pades_level: &str,
         timestamp_url: Option<&str>,
+        sig_tag: Option<&str>,
+        sig_tag_width: Option<f64>,
+        sig_tag_height: Option<f64>,
+        sig_tag_mode: Option<&str>,
     ) -> Result<SignPdfResponse> {
         let token = self.get_token()?;
         let url = format!("{}/api/v1/signPdf", self.base_url);
@@ -301,6 +309,10 @@ impl CscClient {
             timestamp_url: timestamp_url.map(|s| s.to_string()),
             include_crl: false,
             include_ocsp: false,
+            sig_tag: sig_tag.map(|s| s.to_string()),
+            sig_tag_width,
+            sig_tag_height,
+            sig_tag_mode: sig_tag_mode.map(|s| s.to_string()),
         };
 
         let resp = self
